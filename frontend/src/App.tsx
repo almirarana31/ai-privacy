@@ -22,33 +22,108 @@ type Result = {
   modelUsed: string;
 };
 
+type ComparisonData = {
+  baseline: Result | null;
+  private: Result | null;
+};
+
 type UploadInfo = {
   fileName: string;
   targetColumn?: string;
 };
 
+type EthicsQuestion = {
+  id: string;
+  question: string;
+  options: string[];
+  context?: string;
+};
+
+type EthicsResponse = {
+  questionId: string;
+  answer: string;
+};
+
 const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'playground' | 'survey'>('playground');
   const [config, setConfig] = useState<Config>({
     sampleDataset: 'diabetes',
     modelType: 'fnn',
-    dpEnabled: false,
+    dpEnabled: true,
     epsilon: 1.0,
   });
   const [status, setStatus] = useState<'idle' | 'running'>('idle');
-  const [result, setResult] = useState<Result | null>(null);
+  const [comparison, setComparison] = useState<ComparisonData>({
+    baseline: null,
+    private: null,
+  });
   const [error, setError] = useState<string | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(true);
+  const [showEthicsPrompt, setShowEthicsPrompt] = useState(false);
+  const [ethicsResponses, setEthicsResponses] = useState<EthicsResponse[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
 
   const isLoading = status === 'running';
 
-  const runExperiment = async () => {
+  // Ethics questions that adapt to experiment results
+  const getEthicsQuestions = (): EthicsQuestion[] => {
+    const accuracyLoss = comparison.baseline && comparison.private
+      ? (comparison.baseline.baselineAccuracy - comparison.private.baselineAccuracy).toFixed(2)
+      : '0';
+    
+    const epsilon = comparison.private?.epsilon || config.epsilon;
+
+    return [
+      {
+        id: 'usecase',
+        question: `Given this result (${accuracyLoss}% accuracy loss with ε=${epsilon}), which use case would you feel comfortable deploying this model for?`,
+        options: [
+          'Healthcare diagnosis (high stakes)',
+          'Product recommendations (low stakes)',
+          'Financial fraud detection (medium stakes)',
+          'I would not deploy this model',
+        ],
+        context: 'Consider the real-world impact of prediction errors.'
+      },
+      {
+        id: 'acceptable_loss',
+        question: 'What is the maximum acceptable accuracy loss for privacy protection in sensitive applications?',
+        options: [
+          'Less than 1% - Privacy is important but accuracy is critical',
+          '1-3% - Moderate tradeoff is acceptable',
+          '3-5% - Privacy should be prioritized',
+          'More than 5% - Maximum privacy at any cost',
+        ],
+      },
+      {
+        id: 'transparency',
+        question: 'Should companies using AI models be legally required to disclose their privacy parameters (like epsilon)?',
+        options: [
+          'Yes, always - Users have a right to know',
+          'Only for sensitive data (health, finance)',
+          'No, it\'s a business decision',
+          'Unsure',
+        ],
+      },
+    ];
+  };
+
+  const runExperiment = async (runBaseline: boolean = false) => {
     setStatus('running');
     setError(null);
-    setResult(null);
 
     try {
+      const dpEnabledForRun = runBaseline ? false : config.dpEnabled;
+      
+      console.log('Sending request:', {
+        dataset: config.sampleDataset,
+        model_type: config.modelType,
+        dp_enabled: dpEnabledForRun,
+        epsilon: dpEnabledForRun ? config.epsilon : null,
+      });
+
       const response = await fetch(`${API_BASE_URL}/api/experiment`, {
         method: 'POST',
         headers: {
@@ -57,85 +132,79 @@ const App: React.FC = () => {
         body: JSON.stringify({
           dataset: config.sampleDataset,
           model_type: config.modelType,
-          dp_enabled: config.dpEnabled,
-          epsilon: config.dpEnabled ? config.epsilon : null,
+          dp_enabled: dpEnabledForRun,
+          epsilon: dpEnabledForRun ? config.epsilon : null,
         }),
       });
 
+      console.log('Response status:', response.status);
+
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         throw new Error(errorData.detail || 'Failed to run experiment');
       }
 
       const data = await response.json();
-      setResult({
-        baselineAccuracy: data.baseline_accuracy,
+      console.log('Response data:', data);
+
+      const result: Result = {
+        baselineAccuracy: data.baseline_accuracy || 0,
         privateAccuracy: data.private_accuracy,
         accuracyLoss: data.accuracy_loss,
         f1Score: data.f1_score,
         precision: data.precision,
         recall: data.recall,
         epsilon: data.epsilon,
-        samplesEvaluated: data.samples_evaluated,
-        modelUsed: data.model_used,
-      });
+        samplesEvaluated: data.samples_evaluated || 0,
+        modelUsed: data.model_used || 'Unknown',
+      };
+
+      if (runBaseline) {
+        setComparison(prev => ({ ...prev, baseline: result }));
+      } else {
+        setComparison(prev => ({ ...prev, private: result }));
+      }
     } catch (err) {
+      console.error('Error in runExperiment:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     }
 
     setStatus('idle');
   };
 
-  const runExperimentWithUpload = async () => {
-    if (!fileInputRef.current?.files?.[0]) {
-      setError('Please select a CSV file first');
-      return;
+  const runComparison = async () => {
+    setComparison({ baseline: null, private: null });
+    setShowEthicsPrompt(false);
+    await runExperiment(true);  // Run baseline
+    if (config.dpEnabled) {
+      await runExperiment(false); // Run DP version
+      // Show ethics prompt after seeing DP results
+      setShowEthicsPrompt(true);
+      setCurrentQuestion(0);
     }
+  };
 
-    setStatus('running');
-    setError(null);
-    setResult(null);
+  const handleEthicsAnswer = (answer: string) => {
+    const questions = getEthicsQuestions();
+    setEthicsResponses([...ethicsResponses, {
+      questionId: questions[currentQuestion].id,
+      answer
+    }]);
 
-    try {
-      const formData = new FormData();
-      formData.append('file', fileInputRef.current.files[0]);
-      formData.append('dataset', config.sampleDataset);
-      formData.append('model_type', config.modelType);
-      formData.append('dp_enabled', String(config.dpEnabled));
-      if (config.dpEnabled && config.epsilon) {
-        formData.append('epsilon', String(config.epsilon));
-      }
-      if (uploadInfo?.targetColumn) {
-        formData.append('target_column', uploadInfo.targetColumn);
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/experiment/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to run experiment');
-      }
-
-      const data = await response.json();
-      setResult({
-        baselineAccuracy: data.baseline_accuracy,
-        privateAccuracy: data.private_accuracy,
-        accuracyLoss: data.accuracy_loss,
-        f1Score: data.f1_score,
-        precision: data.precision,
-        recall: data.recall,
-        epsilon: data.epsilon,
-        samplesEvaluated: data.samples_evaluated,
-        modelUsed: data.model_used,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      setShowEthicsPrompt(false);
     }
+  };
 
-    setStatus('idle');
+  const skipEthicsQuestion = () => {
+    const questions = getEthicsQuestions();
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      setShowEthicsPrompt(false);
+    }
   };
 
   const updateConfig = (newConfig: Partial<Config>) => {
@@ -161,143 +230,153 @@ const App: React.FC = () => {
     setUploadInfo(null);
   };
 
+  const hasResults = comparison.baseline || comparison.private;
+
   return (
-    <div className="app">
+    <div className="playground">
+      {/* Welcome Modal */}
+      {showWelcomeModal && (
+        <div className="modal-overlay">
+          <div className="modal welcome-modal">
+            <h2>🔒 Welcome to Privacy Playground</h2>
+            <div className="modal-content">
+              <p className="lead">
+                Explore the ethical dilemma at the heart of modern AI: <strong>privacy vs accuracy</strong>.
+              </p>
+              
+              <div className="ethics-intro">
+                <h3>Why Privacy Matters</h3>
+                <ul>
+                  <li><strong>Real consequences:</strong> AI models can memorize sensitive training data</li>
+                  <li><strong>Personal exposure:</strong> Medical records, financial data, personal behaviors can leak</li>
+                  <li><strong>Differential Privacy:</strong> Adds mathematical guarantees to protect individuals</li>
+                </ul>
+              </div>
+
+              <div className="ethics-intro">
+                <h3>The Tradeoff</h3>
+                <p>
+                  Adding privacy protection reduces model accuracy. Your task: explore different 
+                  privacy levels and decide what tradeoffs are acceptable.
+                </p>
+              </div>
+
+              <div className="ethics-question-box">
+                <p><strong>💭 Think about:</strong> What if this was <em>your</em> health data? Would you accept less accurate predictions in exchange for privacy?</p>
+              </div>
+
+              <button className="modal-button" onClick={() => setShowWelcomeModal(false)}>
+                Start Exploring
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ethics Prompt Modal */}
+      {showEthicsPrompt && comparison.private && (
+        <div className="modal-overlay">
+          <div className="modal ethics-modal">
+            <div className="modal-header">
+              <h2>🤔 Reflect on Your Results</h2>
+              <p className="question-progress">Question {currentQuestion + 1} of {getEthicsQuestions().length}</p>
+            </div>
+            
+            <div className="modal-content">
+              {getEthicsQuestions()[currentQuestion]?.context && (
+                <div className="question-context">
+                  {getEthicsQuestions()[currentQuestion].context}
+                </div>
+              )}
+              
+              <h3 className="ethics-question">{getEthicsQuestions()[currentQuestion]?.question}</h3>
+              
+              <div className="ethics-options">
+                {getEthicsQuestions()[currentQuestion]?.options.map((option, idx) => (
+                  <button
+                    key={idx}
+                    className="ethics-option"
+                    onClick={() => handleEthicsAnswer(option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+
+              <button className="skip-button" onClick={skipEthicsQuestion}>
+                Skip Question →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="header">
-        <h1>🔒 Privacy Playground</h1>
-        <p>Test pre-trained models with differential privacy</p>
+        <h1>🔒 Differential Privacy Playground</h1>
+        <nav className="tabs">
+          <button 
+            className={`tab ${activeTab === 'playground' ? 'active' : ''}`}
+            onClick={() => setActiveTab('playground')}
+          >
+            🎮 Interactive Playground
+          </button>
+          <button 
+            className={`tab ${activeTab === 'survey' ? 'active' : ''}`}
+            onClick={() => setActiveTab('survey')}
+          >
+            📋 Feedback Survey
+          </button>
+        </nav>
       </header>
 
-      <main className="main">
-        {/* Quick Test Section */}
-        <section className="card">
-          <h2>Quick Test</h2>
-          <div className="quick-tests">
-            <button
-              className="test-btn baseline"
-              onClick={() => {
-                updateConfig({
-                  sampleDataset: 'diabetes',
-                  modelType: 'fnn',
-                  dpEnabled: false,
-                });
-                setTimeout(runExperiment, 100);
-              }}
-              disabled={isLoading}
-            >
-              <div className="test-btn-title">Baseline - Diabetes</div>
-              <div className="test-btn-desc">FNN, No privacy protection</div>
-            </button>
-
-            <button
-              className="test-btn dp"
-              onClick={() => {
-                updateConfig({
-                  sampleDataset: 'diabetes',
-                  modelType: 'fnn',
-                  dpEnabled: true,
-                  epsilon: 1.0,
-                });
-                setTimeout(runExperiment, 100);
-              }}
-              disabled={isLoading}
-            >
-              <div className="test-btn-title">DP - Diabetes (ε=1.0)</div>
-              <div className="test-btn-desc">FNN-DP, High privacy</div>
-            </button>
-
-            <button
-              className="test-btn baseline"
-              onClick={() => {
-                updateConfig({
-                  sampleDataset: 'adult',
-                  modelType: 'lr',
-                  dpEnabled: false,
-                });
-                setTimeout(runExperiment, 100);
-              }}
-              disabled={isLoading}
-            >
-              <div className="test-btn-title">Baseline - Adult</div>
-              <div className="test-btn-desc">Logistic Regression</div>
-            </button>
-
-            <button
-              className="test-btn dp"
-              onClick={() => {
-                updateConfig({
-                  sampleDataset: 'adult',
-                  modelType: 'lr',
-                  dpEnabled: true,
-                  epsilon: 3.0,
-                });
-                setTimeout(runExperiment, 100);
-              }}
-              disabled={isLoading}
-            >
-              <div className="test-btn-title">DP - Adult (ε=3.0)</div>
-              <div className="test-btn-desc">LR-DP, Moderate privacy</div>
-            </button>
-          </div>
-        </section>
-
-        {/* Custom Configuration */}
-        <section className="card">
-          <div className="card-header">
-            <h2>Custom Configuration</h2>
-            <button 
-              className="toggle-advanced"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-            >
-              {showAdvanced ? '▼ Hide' : '▶ Show'} Advanced
-            </button>
-          </div>
-
-          <div className="config-grid">
-            <div className="field">
+      {activeTab === 'playground' && (
+      <div className="playground-container">
+        {/* Left Panel - Configuration */}
+        <aside className="left-panel">
+          <section className="control-section">
+            <h3>Data</h3>
+            <div className="control-group">
               <label>Dataset</label>
               <select
                 value={config.sampleDataset}
                 onChange={(e) => updateConfig({ sampleDataset: e.target.value })}
               >
-                <option value="diabetes">Diabetes (21 features)</option>
-                <option value="adult">Adult Income (14 features)</option>
+                <option value="diabetes">Diabetes</option>
+                <option value="adult">Adult Income</option>
               </select>
             </div>
+          </section>
 
-            <div className="field">
-              <label>Model Type</label>
+          <section className="control-section">
+            <h3>Model</h3>
+            <div className="control-group">
+              <label>Type</label>
               <select
                 value={config.modelType}
                 onChange={(e) => updateConfig({ modelType: e.target.value })}
               >
-                <option value="fnn">Feedforward Neural Network</option>
+                <option value="fnn">Neural Network</option>
                 <option value="lr">Logistic Regression</option>
               </select>
             </div>
+          </section>
 
-            <div className="field">
-              <label>
-                Differential Privacy
-                <span className="field-hint">Add noise to protect privacy</span>
-              </label>
-              <div className="checkbox-row">
+          <section className="control-section">
+            <h3>Privacy</h3>
+            <div className="control-group">
+              <label className="checkbox-label">
                 <input
                   type="checkbox"
-                  id="dp-toggle"
                   checked={config.dpEnabled}
                   onChange={(e) => updateConfig({ dpEnabled: e.target.checked })}
                 />
-                <label htmlFor="dp-toggle">Enable</label>
-              </div>
+                <span>Enable Differential Privacy</span>
+              </label>
             </div>
 
             {config.dpEnabled && (
-              <div className="field">
-                <label>
-                  Epsilon (ε): {config.epsilon}
-                  <span className="field-hint">Lower = more privacy, less accuracy</span>
-                </label>
+              <div className="control-group">
+                <label>Epsilon (ε): {config.epsilon}</label>
                 <input
                   type="range"
                   min="0.5"
@@ -305,153 +384,212 @@ const App: React.FC = () => {
                   step="0.5"
                   value={config.epsilon || 1.0}
                   onChange={(e) => updateConfig({ epsilon: parseFloat(e.target.value) })}
+                  className="slider"
                 />
-                <div className="epsilon-labels">
-                  <span>0.5 (High Privacy)</span>
-                  <span>10 (Low Privacy)</span>
+                <div className="slider-labels">
+                  <span>0.5<br/><small>More Private</small></span>
+                  <span>10<br/><small>Less Private</small></span>
                 </div>
               </div>
             )}
+          </section>
 
-            {showAdvanced && (
-              <div className="field upload-field">
-                <label>
-                  Upload Custom CSV
-                  <span className="field-hint">Test with your own data</span>
-                </label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept=".csv"
-                  onChange={handleFileChange}
-                  className="file-input"
-                />
-                {uploadInfo && (
-                  <div className="upload-info">
-                    <span>📄 {uploadInfo.fileName}</span>
-                    <button className="clear-upload" onClick={clearUpload}>×</button>
+          <button
+            className="run-button"
+            onClick={runComparison}
+            disabled={isLoading}
+          >
+            {isLoading ? '⏳ Running...' : '▶ Run Experiment'}
+          </button>
+
+          {error && (
+            <div className="error-box">
+              <strong>Error:</strong> {error}
+            </div>
+          )}
+        </aside>
+
+        {/* Center Panel - Visualization */}
+        <main className="center-panel">
+          {!hasResults && !isLoading && (
+            <div className="placeholder">
+              <div className="placeholder-icon">📊</div>
+              <h2>Privacy vs Accuracy Tradeoff</h2>
+              <p>Configure your experiment and click "Run Experiment" to see results</p>
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="loading-visualization">
+              <div className="spinner"></div>
+              <p>Evaluating model...</p>
+            </div>
+          )}
+
+          {hasResults && !isLoading && (
+            <div className="visualization">
+              <h2>Results</h2>
+              
+              <div className="comparison-grid">
+                {comparison.baseline && (
+                  <div className="result-card baseline-card">
+                    <h3>🎯 Baseline (No Privacy)</h3>
+                    <div className="model-info">{comparison.baseline.modelUsed}</div>
+                    <div className="big-metric">
+                      <div className="metric-label">Accuracy</div>
+                      <div className="metric-value">{comparison.baseline.baselineAccuracy.toFixed(2)}%</div>
+                    </div>
+                    <div className="small-metrics">
+                      <div className="small-metric">
+                        <span>F1 Score:</span>
+                        <strong>{comparison.baseline.f1Score?.toFixed(4) || 'N/A'}</strong>
+                      </div>
+                      <div className="small-metric">
+                        <span>Precision:</span>
+                        <strong>{comparison.baseline.precision?.toFixed(4) || 'N/A'}</strong>
+                      </div>
+                      <div className="small-metric">
+                        <span>Recall:</span>
+                        <strong>{comparison.baseline.recall?.toFixed(4) || 'N/A'}</strong>
+                      </div>
+                      <div className="small-metric">
+                        <span>Samples:</span>
+                        <strong>{comparison.baseline.samplesEvaluated.toLocaleString()}</strong>
+                      </div>
+                    </div>
                   </div>
                 )}
-                {uploadInfo && (
-                  <div className="target-column-field">
-                    <label>Target Column (optional)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., target, label, class"
-                      value={uploadInfo.targetColumn || ''}
-                      onChange={(e) => setUploadInfo({ ...uploadInfo, targetColumn: e.target.value })}
-                    />
+
+                {comparison.private && config.dpEnabled && (
+                  <div className="result-card private-card">
+                    <h3>🔒 With Privacy (ε={comparison.private.epsilon})</h3>
+                    <div className="model-info">{comparison.private.modelUsed}</div>
+                    <div className="big-metric">
+                      <div className="metric-label">Accuracy</div>
+                      <div className="metric-value">{comparison.private.baselineAccuracy.toFixed(2)}%</div>
+                    </div>
+                    {comparison.baseline && (
+                      <div className="accuracy-loss">
+                        Loss: {(comparison.baseline.baselineAccuracy - comparison.private.baselineAccuracy).toFixed(2)}%
+                      </div>
+                    )}
+                    <div className="small-metrics">
+                      <div className="small-metric">
+                        <span>F1 Score:</span>
+                        <strong>{comparison.private.f1Score?.toFixed(4) || 'N/A'}</strong>
+                      </div>
+                      <div className="small-metric">
+                        <span>Precision:</span>
+                        <strong>{comparison.private.precision?.toFixed(4) || 'N/A'}</strong>
+                      </div>
+                      <div className="small-metric">
+                        <span>Recall:</span>
+                        <strong>{comparison.private.recall?.toFixed(4) || 'N/A'}</strong>
+                      </div>
+                      <div className="small-metric">
+                        <span>Samples:</span>
+                        <strong>{comparison.private.samplesEvaluated.toLocaleString()}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!config.dpEnabled && comparison.baseline && (
+                  <div className="info-message">
+                    <p>💡 Enable Differential Privacy to see the privacy-accuracy tradeoff</p>
                   </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
+        </main>
+
+        {/* Right Panel - Information */}
+        <aside className="right-panel">
+          <section className="info-section">
+            <h3>About</h3>
+            <p>
+              This playground demonstrates the tradeoff between <strong>privacy</strong> and <strong>accuracy</strong> in machine learning.
+            </p>
+          </section>
+
+          <section className="info-section">
+            <h3>Differential Privacy</h3>
+            <p>
+              Adds controlled noise during training to protect individual privacy.
+            </p>
+            <p>
+              <strong>Epsilon (ε)</strong> controls the privacy level:
+            </p>
+            <ul>
+              <li><strong>Lower ε (0.5-1.0):</strong> More private, less accurate</li>
+              <li><strong>Higher ε (3.0-10.0):</strong> Less private, more accurate</li>
+            </ul>
+          </section>
+
+          <section className="info-section">
+            <h3>Datasets</h3>
+            <p><strong>Diabetes:</strong> 21 features, binary classification</p>
+            <p><strong>Adult Income:</strong> 14 features, income prediction</p>
+          </section>
+
+          <section className="info-section">
+            <h3>Models</h3>
+            <p><strong>Neural Network:</strong> 3 hidden layers [128, 64, 32]</p>
+            <p><strong>Logistic Regression:</strong> Linear classifier</p>
+          </section>
+        </aside>
+      </div>
+      )}
+
+      {activeTab === 'survey' && (
+        <div className="survey-container">
+          <div className="survey-intro">
+            <h2>📋 Feedback Survey</h2>
+            <p>
+              After exploring the privacy-accuracy tradeoff, we'd love to hear your thoughts!
+              This survey helps us understand how people perceive differential privacy.
+            </p>
+            <p className="survey-note">
+              💡 <strong>Tip:</strong> Run a few experiments in the Playground tab first, 
+              then come back here to share your insights.
+            </p>
           </div>
 
-          <div className="button-row">
-            <button
-              className="run-btn"
-              onClick={runExperiment}
-              disabled={isLoading}
+          <div className="form-embed">
+            {/* Replace the src URL below with your actual Google Forms or Microsoft Forms embed URL */}
+            <iframe 
+              src="https://docs.google.com/forms/d/e/YOUR_FORM_ID/viewform?embedded=true" 
+              width="100%" 
+              height="800"
+              frameBorder="0"
+              marginHeight={0}
+              marginWidth={0}
             >
-              {isLoading ? '⏳ Running...' : '▶ Run with Test Data'}
-            </button>
+              Loading form...
+            </iframe>
             
-            {showAdvanced && uploadInfo && (
-              <button
-                className="run-btn upload-btn"
-                onClick={runExperimentWithUpload}
-                disabled={isLoading}
-              >
-                {isLoading ? '⏳ Running...' : '📤 Run with Upload'}
-              </button>
-            )}
+            {/* Alternative: Add a placeholder message until you have the form URL */}
+            <div className="form-placeholder">
+              <h3>📝 Survey Form Coming Soon</h3>
+              <p>To add your Google Forms or Microsoft Forms here:</p>
+              <ol>
+                <li>Create your form in Google Forms or Microsoft Forms</li>
+                <li>Click "Send" and select the "&lt;&gt;" (embed) option</li>
+                <li>Copy the iframe embed code</li>
+                <li>Replace the iframe src URL in App.tsx (line ~520)</li>
+              </ol>
+              <p className="example-questions">
+                <strong>Suggested survey questions:</strong><br/>
+                • What epsilon value felt most balanced to you?<br/>
+                • Would you trust a DP-protected model with your health data?<br/>
+                • Should privacy protection be mandatory for AI systems?<br/>
+                • How did this tool change your understanding of privacy in AI?
+              </p>
+            </div>
           </div>
-        </section>
-
-        {/* Results */}
-        {error && (
-          <section className="card error-card">
-            <h2>❌ Error</h2>
-            <pre className="error-text">{error}</pre>
-          </section>
-        )}
-
-        {result && (
-          <section className="card results-card">
-            <h2>📊 Results</h2>
-            
-            <div className="result-model-info">
-              <span className="model-badge">{result.modelUsed}</span>
-              <span className="samples-info">{result.samplesEvaluated} samples evaluated</span>
-            </div>
-            
-            <div className="metrics-grid">
-              <div className="metric">
-                <div className="metric-label">
-                  {config.dpEnabled ? 'Private Accuracy' : 'Baseline Accuracy'}
-                </div>
-                <div className={`metric-value ${config.dpEnabled ? 'private-value' : 'baseline-value'}`}>
-                  {config.dpEnabled 
-                    ? (result.privateAccuracy ?? result.baselineAccuracy).toFixed(2)
-                    : result.baselineAccuracy.toFixed(2)}%
-                </div>
-              </div>
-
-              {config.dpEnabled && result.accuracyLoss !== undefined && (
-                <div className="metric">
-                  <div className="metric-label">Accuracy Loss</div>
-                  <div className="metric-value loss-value">
-                    {result.accuracyLoss.toFixed(2)}%
-                  </div>
-                </div>
-              )}
-
-              {config.dpEnabled && result.epsilon !== undefined && (
-                <div className="metric">
-                  <div className="metric-label">Epsilon (ε)</div>
-                  <div className="metric-value epsilon-value">
-                    {result.epsilon}
-                  </div>
-                </div>
-              )}
-
-              {result.f1Score !== undefined && (
-                <div className="metric">
-                  <div className="metric-label">F1 Score</div>
-                  <div className="metric-value">
-                    {result.f1Score.toFixed(4)}
-                  </div>
-                </div>
-              )}
-
-              {result.precision !== undefined && (
-                <div className="metric">
-                  <div className="metric-label">Precision</div>
-                  <div className="metric-value">
-                    {result.precision.toFixed(4)}
-                  </div>
-                </div>
-              )}
-
-              {result.recall !== undefined && (
-                <div className="metric">
-                  <div className="metric-label">Recall</div>
-                  <div className="metric-value">
-                    {result.recall.toFixed(4)}
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {isLoading && (
-          <section className="card loading-card">
-            <div className="loading-spinner"></div>
-            <p>Loading pre-trained model and evaluating...</p>
-          </section>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 };
