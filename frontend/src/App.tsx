@@ -147,21 +147,30 @@ const App: React.FC = () => {
       const data = await response.json();
       console.log('Response data:', data);
 
-      const result: Result = {
-        baselineAccuracy: data.baseline_accuracy || 0,
-        privateAccuracy: data.private_accuracy,
-        accuracyLoss: data.accuracy_loss,
-        f1Score: data.f1_score,
-        precision: data.precision,
-        recall: data.recall,
-        epsilon: data.epsilon,
-        samplesEvaluated: data.samples_evaluated || 0,
-        modelUsed: data.model_used || 'Unknown',
-      };
-
       if (runBaseline) {
+        // For baseline run, use baseline_accuracy and baseline metrics
+        const result: Result = {
+          baselineAccuracy: data.baseline_accuracy || 0,
+          f1Score: data.f1_score,
+          precision: data.precision,
+          recall: data.recall,
+          samplesEvaluated: data.samples_evaluated || 0,
+          modelUsed: data.model_used || 'Unknown',
+        };
         setComparison(prev => ({ ...prev, baseline: result }));
       } else {
+        // For DP run, use private_accuracy (which is the DP model's accuracy)
+        const result: Result = {
+          baselineAccuracy: data.private_accuracy || data.baseline_accuracy || 0,
+          privateAccuracy: data.private_accuracy,
+          accuracyLoss: data.accuracy_loss,
+          f1Score: data.f1_score,
+          precision: data.precision,
+          recall: data.recall,
+          epsilon: data.epsilon || config.epsilon,  // Use requested epsilon if backend doesn't return one
+          samplesEvaluated: data.samples_evaluated || 0,
+          modelUsed: data.model_used || 'Unknown',
+        };
         setComparison(prev => ({ ...prev, private: result }));
       }
     } catch (err) {
@@ -178,10 +187,20 @@ const App: React.FC = () => {
     await runExperiment(true);  // Run baseline
     if (config.dpEnabled) {
       await runExperiment(false); // Run DP version
-      // Show ethics prompt after seeing DP results
-      setShowEthicsPrompt(true);
-      setCurrentQuestion(0);
+      // After results are shown, prompt user to take the survey
+      setTimeout(() => {
+        setShowEthicsPrompt(true);
+      }, 3000); // 3 second delay to review results
     }
+  };
+
+  const handleSurveyRedirect = () => {
+    setShowEthicsPrompt(false);
+    setActiveTab('survey');
+  };
+
+  const skipSurvey = () => {
+    setShowEthicsPrompt(false);
   };
 
   const handleEthicsAnswer = (answer: string) => {
@@ -273,39 +292,47 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Ethics Prompt Modal */}
+      {/* Ethics Prompt Modal - Simplified to survey redirect */}
       {showEthicsPrompt && comparison.private && (
         <div className="modal-overlay">
           <div className="modal ethics-modal">
             <div className="modal-header">
               <h2>🤔 Reflect on Your Results</h2>
-              <p className="question-progress">Question {currentQuestion + 1} of {getEthicsQuestions().length}</p>
             </div>
             
             <div className="modal-content">
-              {getEthicsQuestions()[currentQuestion]?.context && (
-                <div className="question-context">
-                  {getEthicsQuestions()[currentQuestion].context}
-                </div>
-              )}
+              <div className="question-context">
+                You've just seen the privacy-accuracy tradeoff firsthand!
+              </div>
               
-              <h3 className="ethics-question">{getEthicsQuestions()[currentQuestion]?.question}</h3>
+              <h3 className="ethics-question">
+                Help us understand your perspective on AI privacy and ethics.
+              </h3>
               
-              <div className="ethics-options">
-                {getEthicsQuestions()[currentQuestion]?.options.map((option, idx) => (
-                  <button
-                    key={idx}
-                    className="ethics-option"
-                    onClick={() => handleEthicsAnswer(option)}
-                  >
-                    {option}
-                  </button>
-                ))}
+              <div className="survey-prompt">
+                <p>
+                  Your experiment showed a <strong>{(comparison.baseline!.baselineAccuracy - comparison.private!.baselineAccuracy).toFixed(2)}% accuracy loss</strong> with 
+                  epsilon = <strong>{comparison.private.epsilon}</strong>.
+                </p>
+                <p>
+                  Take our brief survey to share your thoughts on when this tradeoff is acceptable.
+                </p>
               </div>
 
-              <button className="skip-button" onClick={skipEthicsQuestion}>
-                Skip Question →
-              </button>
+              <div className="ethics-options">
+                <button
+                  className="ethics-option primary"
+                  onClick={handleSurveyRedirect}
+                >
+                  📋 Take the Ethics Survey
+                </button>
+                <button
+                  className="ethics-option secondary"
+                  onClick={skipSurvey}
+                >
+                  Maybe Later
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -324,7 +351,7 @@ const App: React.FC = () => {
             className={`tab ${activeTab === 'survey' ? 'active' : ''}`}
             onClick={() => setActiveTab('survey')}
           >
-            📋 Feedback Survey
+            📋 Ethics Survey
           </button>
         </nav>
       </header>
@@ -379,16 +406,25 @@ const App: React.FC = () => {
                 <label>Epsilon (ε): {config.epsilon}</label>
                 <input
                   type="range"
-                  min="0.5"
-                  max="10"
-                  step="0.5"
-                  value={config.epsilon || 1.0}
-                  onChange={(e) => updateConfig({ epsilon: parseFloat(e.target.value) })}
+                  min="0"
+                  max="3"
+                  step="1"
+                  value={[0.5, 1.0, 3.0, 10.0].indexOf(config.epsilon || 1.0)}
+                  onChange={(e) => {
+                    const epsilonValues = [0.5, 1.0, 3.0, 10.0];
+                    updateConfig({ epsilon: epsilonValues[parseInt(e.target.value)] });
+                  }}
                   className="slider"
                 />
+                <div className="epsilon-markers">
+                  <span className={config.epsilon === 0.5 ? 'active' : ''}>0.5</span>
+                  <span className={config.epsilon === 1.0 ? 'active' : ''}>1.0</span>
+                  <span className={config.epsilon === 3.0 ? 'active' : ''}>3.0</span>
+                  <span className={config.epsilon === 10.0 ? 'active' : ''}>10.0</span>
+                </div>
                 <div className="slider-labels">
-                  <span>0.5<br/><small>More Private</small></span>
-                  <span>10<br/><small>Less Private</small></span>
+                  <span>More Private</span>
+                  <span>Less Private</span>
                 </div>
               </div>
             )}
@@ -544,50 +580,14 @@ const App: React.FC = () => {
 
       {activeTab === 'survey' && (
         <div className="survey-container">
-          <div className="survey-intro">
-            <h2>📋 Feedback Survey</h2>
-            <p>
-              After exploring the privacy-accuracy tradeoff, we'd love to hear your thoughts!
-              This survey helps us understand how people perceive differential privacy.
-            </p>
-            <p className="survey-note">
-              💡 <strong>Tip:</strong> Run a few experiments in the Playground tab first, 
-              then come back here to share your insights.
-            </p>
+          <div className="survey-header">
           </div>
-
-          <div className="form-embed">
-            {/* Replace the src URL below with your actual Google Forms or Microsoft Forms embed URL */}
-            <iframe 
-              src="https://docs.google.com/forms/d/e/YOUR_FORM_ID/viewform?embedded=true" 
-              width="100%" 
-              height="800"
-              frameBorder="0"
-              marginHeight={0}
-              marginWidth={0}
-            >
-              Loading form...
-            </iframe>
-            
-            {/* Alternative: Add a placeholder message until you have the form URL */}
-            <div className="form-placeholder">
-              <h3>📝 Survey Form Coming Soon</h3>
-              <p>To add your Google Forms or Microsoft Forms here:</p>
-              <ol>
-                <li>Create your form in Google Forms or Microsoft Forms</li>
-                <li>Click "Send" and select the "&lt;&gt;" (embed) option</li>
-                <li>Copy the iframe embed code</li>
-                <li>Replace the iframe src URL in App.tsx (line ~520)</li>
-              </ol>
-              <p className="example-questions">
-                <strong>Suggested survey questions:</strong><br/>
-                • What epsilon value felt most balanced to you?<br/>
-                • Would you trust a DP-protected model with your health data?<br/>
-                • Should privacy protection be mandatory for AI systems?<br/>
-                • How did this tool change your understanding of privacy in AI?
-              </p>
-            </div>
-          </div>
+          <iframe 
+          src="https://docs.google.com/forms/d/e/1FAIpQLSdh5hnwsB8AmKSrbLzgdzj2zA3AnltJkCmCup-SfP5ehePC3A/viewform?embedded=true" 
+          width="100%" 
+          height="90%" 
+          style={{ border: 'none', borderRadius: '8px' }}
+          >Loading…</iframe>
         </div>
       )}
     </div>

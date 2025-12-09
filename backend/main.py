@@ -156,8 +156,21 @@ def evaluate_model(model: torch.nn.Module, X: np.ndarray, y: np.ndarray) -> dict
     with torch.no_grad():
         X_tensor = torch.FloatTensor(X)
         outputs = model(X_tensor)
-        _, predictions = torch.max(outputs, 1)
+        
+        # For binary classification, check output shape
+        if outputs.shape[1] == 2:
+            # Use softmax for 2-class output
+            _, predictions = torch.max(outputs, 1)
+        else:
+            # Single output - use sigmoid threshold
+            predictions = (torch.sigmoid(outputs) > 0.5).long().squeeze()
+        
         predictions = predictions.numpy()
+    
+    # Debug: Check prediction distribution
+    unique, counts = np.unique(predictions, return_counts=True)
+    pred_dist = dict(zip(unique, counts))
+    print(f"  Prediction distribution: {pred_dist}")
     
     return {
         'accuracy': accuracy_score(y, predictions) * 100,
@@ -297,6 +310,7 @@ async def run_experiment(config: ExperimentConfig):
     
     # Evaluate baseline
     baseline_metrics = evaluate_model(baseline_model, X_test, y_test)
+    print(f"📊 Baseline metrics: {baseline_metrics}")
     
     result = ExperimentResult(
         baseline_accuracy=baseline_metrics['accuracy'],
@@ -328,12 +342,22 @@ async def run_experiment(config: ExperimentConfig):
         
         if dp_model:
             dp_metrics = evaluate_model(dp_model, X_test, y_test)
+            print(f"🔒 DP metrics (ε={result.epsilon}): {dp_metrics}")
+            
+            # Check if model collapsed (predicting only one class)
+            if dp_metrics['f1_score'] == 0.0 and dp_metrics['precision'] == 0.0:
+                print(f"⚠️  WARNING: DP model appears to have collapsed (predicting only one class)")
+                # Still return the metrics so users can see the issue
+            
             result.private_accuracy = dp_metrics['accuracy']
             result.accuracy_loss = baseline_metrics['accuracy'] - dp_metrics['accuracy']
+            # Update metrics to DP model's metrics (for DP run)
             result.f1_score = dp_metrics['f1_score']
             result.precision = dp_metrics['precision']
             result.recall = dp_metrics['recall']
+            # Update model name to indicate DP model
             result.model_used = f"{config.dataset}_{model_type_key}_eps{result.epsilon}"
+            print(f"📤 Returning DP result: baseline_acc={result.baseline_accuracy:.2f}, private_acc={result.private_accuracy:.2f}, loss={result.accuracy_loss:.2f}")
     
     return result
 
