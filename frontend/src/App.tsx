@@ -20,6 +20,8 @@ type Result = {
   epsilon?: number;
   samplesEvaluated: number;
   modelUsed: string;
+  aggregator?: string;
+  strategy?: 'dp' | 'fl';
 };
 
 type ComparisonData = {
@@ -46,6 +48,8 @@ type EthicsResponse = {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'playground' | 'survey'>('playground');
+  const [trainingMode, setTrainingMode] = useState<'dp' | 'fl'>('dp');
+  const [aggregator, setAggregator] = useState<'fedavg' | 'fedprox' | 'qffl' | 'scaffold'>('fedavg');
   const [config, setConfig] = useState<Config>({
     sampleDataset: 'diabetes',
     modelType: 'fnn',
@@ -66,6 +70,33 @@ const App: React.FC = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
 
   const isLoading = status === 'running';
+
+  const aggregatorOptions = [
+    {
+      value: 'fedavg',
+      label: 'FedAvg',
+      description: 'Classic federated averaging across participating clients.',
+      bestFor: 'Stable, balanced data with similar client sizes.'
+    },
+    {
+      value: 'fedprox',
+      label: 'FedProx',
+      description: 'Adds a proximal term to stabilize training with heterogeneous data.',
+      bestFor: 'Non-IID data where clients drift from the global objective.'
+    },
+    {
+      value: 'qffl',
+      label: 'q-FedAvg',
+      description: 'Reweights updates to emphasize underperforming clients.',
+      bestFor: 'Fairness-sensitive setups and skewed performance across clients.'
+    },
+    {
+      value: 'scaffold',
+      label: 'SCAFFOLD',
+      description: 'Uses control variates to reduce client drift during aggregation.',
+      bestFor: 'Highly non-IID data with client-specific biases.'
+    },
+  ];
 
   // Ethics questions that adapt to experiment results
   const getEthicsQuestions = (): EthicsQuestion[] => {
@@ -156,6 +187,7 @@ const App: React.FC = () => {
           recall: data.recall,
           samplesEvaluated: data.samples_evaluated || 0,
           modelUsed: data.model_used || 'Unknown',
+          strategy: 'dp',
         };
         setComparison(prev => ({ ...prev, baseline: result }));
       } else {
@@ -170,6 +202,7 @@ const App: React.FC = () => {
           epsilon: data.epsilon || config.epsilon,  // Use requested epsilon if backend doesn't return one
           samplesEvaluated: data.samples_evaluated || 0,
           modelUsed: data.model_used || 'Unknown',
+          strategy: 'dp',
         };
         setComparison(prev => ({ ...prev, private: result }));
       }
@@ -181,16 +214,79 @@ const App: React.FC = () => {
     setStatus('idle');
   };
 
+  const getAggregatorLabel = (value: string) => {
+    const option = aggregatorOptions.find((o) => o.value === value);
+    return option ? option.label : value;
+  };
+
+  const runFederatedExperiment = async () => {
+    setStatus('running');
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/experiment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dataset: config.sampleDataset,
+          model_type: config.modelType,
+          dp_enabled: false,
+          epsilon: null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || 'Failed to run federated experiment');
+      }
+
+      const data = await response.json();
+      const aggLabel = getAggregatorLabel(aggregator);
+
+      const flAccuracy = data.private_accuracy || data.baseline_accuracy || 0;
+      const result: Result = {
+        baselineAccuracy: flAccuracy,
+        privateAccuracy: data.private_accuracy,
+        accuracyLoss: comparison.baseline
+          ? comparison.baseline.baselineAccuracy - flAccuracy
+          : undefined,
+        f1Score: data.f1_score,
+        precision: data.precision,
+        recall: data.recall,
+        epsilon: undefined,
+        samplesEvaluated: data.samples_evaluated || 0,
+        modelUsed: `${aggLabel} (Federated)`,
+        aggregator,
+        strategy: 'fl',
+      };
+
+      setComparison((prev) => ({ ...prev, private: result }));
+    } catch (err) {
+      console.error('Error in runFederatedExperiment:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    }
+
+    setStatus('idle');
+  };
+
   const runComparison = async () => {
     setComparison({ baseline: null, private: null });
     setShowEthicsPrompt(false);
-    await runExperiment(true);  // Run baseline
-    if (config.dpEnabled) {
-      await runExperiment(false); // Run DP version
-      // After results are shown, prompt user to take the survey
-      setTimeout(() => {
-        setShowEthicsPrompt(true);
-      }, 3000); // 3 second delay to review results
+    setError(null);
+
+    if (trainingMode === 'dp') {
+      await runExperiment(true);  // Run baseline
+      if (config.dpEnabled) {
+        await runExperiment(false); // Run DP version
+        setTimeout(() => {
+          setShowEthicsPrompt(true);
+        }, 3000);
+      }
+    } else {
+      await runExperiment(true); // Baseline for comparison
+      await runFederatedExperiment();
     }
   };
 
@@ -389,53 +485,104 @@ const App: React.FC = () => {
           </section>
 
           <section className="control-section">
-            <h3>Privacy</h3>
+            <h3>Training Strategy</h3>
             <div className="control-group">
               <label className="checkbox-label">
                 <input
-                  type="checkbox"
-                  checked={config.dpEnabled}
-                  onChange={(e) => updateConfig({ dpEnabled: e.target.checked })}
+                  type="radio"
+                  name="training-mode"
+                  checked={trainingMode === 'dp'}
+                  onChange={() => {
+                    setTrainingMode('dp');
+                    updateConfig({ dpEnabled: true });
+                  }}
                 />
-                <span>Enable Differential Privacy</span>
+                <span>Differential Privacy</span>
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="radio"
+                  name="training-mode"
+                  checked={trainingMode === 'fl'}
+                  onChange={() => {
+                    setTrainingMode('fl');
+                    updateConfig({ dpEnabled: false });
+                  }}
+                />
+                <span>Federated Learning</span>
               </label>
             </div>
 
-            {config.dpEnabled && (
+            {trainingMode === 'fl' && (
               <div className="control-group">
-                <label>Epsilon (ε): {config.epsilon}</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="3"
-                  step="1"
-                  value={[0.5, 1.0, 3.0, 10.0].indexOf(config.epsilon || 1.0)}
-                  onChange={(e) => {
-                    const epsilonValues = [0.5, 1.0, 3.0, 10.0];
-                    updateConfig({ epsilon: epsilonValues[parseInt(e.target.value)] });
-                  }}
-                  className="slider"
-                />
-                <div className="epsilon-markers">
-                  <span className={config.epsilon === 0.5 ? 'active' : ''}>0.5</span>
-                  <span className={config.epsilon === 1.0 ? 'active' : ''}>1.0</span>
-                  <span className={config.epsilon === 3.0 ? 'active' : ''}>3.0</span>
-                  <span className={config.epsilon === 10.0 ? 'active' : ''}>10.0</span>
-                </div>
-                <div className="slider-labels">
-                  <span>More Private</span>
-                  <span>Less Private</span>
-                </div>
+                <label>Aggregation Method</label>
+                <select
+                  value={aggregator}
+                  onChange={(e) => setAggregator(e.target.value as typeof aggregator)}
+                >
+                  {aggregatorOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <small className="hint">
+                  {aggregatorOptions.find((o) => o.value === aggregator)?.description}
+                </small>
               </div>
             )}
           </section>
+
+          {trainingMode === 'dp' && (
+            <section className="control-section">
+              <h3>Privacy</h3>
+              <div className="control-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={config.dpEnabled}
+                    onChange={(e) => updateConfig({ dpEnabled: e.target.checked })}
+                  />
+                  <span>Enable Differential Privacy</span>
+                </label>
+              </div>
+
+              {config.dpEnabled && (
+                <div className="control-group">
+                  <label>Epsilon (ε): {config.epsilon}</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="3"
+                    step="1"
+                    value={[0.5, 1.0, 3.0, 10.0].indexOf(config.epsilon || 1.0)}
+                    onChange={(e) => {
+                      const epsilonValues = [0.5, 1.0, 3.0, 10.0];
+                      updateConfig({ epsilon: epsilonValues[parseInt(e.target.value)] });
+                    }}
+                    className="slider"
+                  />
+                  <div className="epsilon-markers">
+                    <span className={config.epsilon === 0.5 ? 'active' : ''}>0.5</span>
+                    <span className={config.epsilon === 1.0 ? 'active' : ''}>1.0</span>
+                    <span className={config.epsilon === 3.0 ? 'active' : ''}>3.0</span>
+                    <span className={config.epsilon === 10.0 ? 'active' : ''}>10.0</span>
+                  </div>
+                  <div className="slider-labels">
+                    <span>More Private</span>
+                    <span>Less Private</span>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
           <button
             className="run-button"
             onClick={runComparison}
             disabled={isLoading}
           >
-            {isLoading ? '⏳ Running...' : '▶ Run Experiment'}
+            {isLoading ? '⏳ Running...' : trainingMode === 'fl' ? '▶ Run Federated' : '▶ Run Experiment'}
           </button>
 
           {error && (
@@ -496,7 +643,7 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {comparison.private && config.dpEnabled && (
+                {comparison.private && trainingMode === 'dp' && config.dpEnabled && (
                   <div className="result-card private-card">
                     <h3>🔒 With Privacy (ε={comparison.private.epsilon})</h3>
                     <div className="model-info">{comparison.private.modelUsed}</div>
@@ -530,7 +677,41 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {!config.dpEnabled && comparison.baseline && (
+                {comparison.private && trainingMode === 'fl' && (
+                  <div className="result-card private-card">
+                    <h3>🤝 Federated ({getAggregatorLabel(comparison.private.aggregator || aggregator)})</h3>
+                    <div className="model-info">{comparison.private.modelUsed}</div>
+                    <div className="big-metric">
+                      <div className="metric-label">Accuracy</div>
+                      <div className="metric-value">{comparison.private.baselineAccuracy.toFixed(2)}%</div>
+                    </div>
+                    {comparison.baseline && (
+                      <div className="accuracy-loss">
+                        Diff vs Baseline: {(comparison.baseline.baselineAccuracy - comparison.private.baselineAccuracy).toFixed(2)}%
+                      </div>
+                    )}
+                    <div className="small-metrics">
+                      <div className="small-metric">
+                        <span>F1 Score:</span>
+                        <strong>{comparison.private.f1Score?.toFixed(4) || 'N/A'}</strong>
+                      </div>
+                      <div className="small-metric">
+                        <span>Precision:</span>
+                        <strong>{comparison.private.precision?.toFixed(4) || 'N/A'}</strong>
+                      </div>
+                      <div className="small-metric">
+                        <span>Recall:</span>
+                        <strong>{comparison.private.recall?.toFixed(4) || 'N/A'}</strong>
+                      </div>
+                      <div className="small-metric">
+                        <span>Samples:</span>
+                        <strong>{comparison.private.samplesEvaluated.toLocaleString()}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!config.dpEnabled && trainingMode === 'dp' && comparison.baseline && (
                   <div className="info-message">
                     <p>💡 Enable Differential Privacy to see the privacy-accuracy tradeoff</p>
                   </div>
@@ -547,6 +728,20 @@ const App: React.FC = () => {
             <p>
               This playground demonstrates the tradeoff between <strong>privacy</strong> and <strong>accuracy</strong> in machine learning.
             </p>
+          </section>
+
+          <section className="info-section">
+            <h3>Federated Learning</h3>
+            <p>
+              Models train across distributed clients and aggregate updates without collecting raw data.
+            </p>
+            <ul>
+              {aggregatorOptions.map((option) => (
+                <li key={option.value}>
+                  <strong>{option.label}:</strong> {option.description} <em>Best for {option.bestFor}</em>
+                </li>
+              ))}
+            </ul>
           </section>
 
           <section className="info-section">
