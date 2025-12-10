@@ -40,6 +40,38 @@ class FeedforwardNN(nn.Module):
         return self.network(x)
 
 
+class FeedforwardNN_Simple(nn.Module):
+    """
+    Simple Feedforward Neural Network without BatchNorm.
+    Used for baseline models trained in notebooks (matches notebook architecture).
+    
+    Architecture: Input -> Linear -> ReLU -> Dropout -> ... -> Linear -> Output
+    """
+    def __init__(self, input_size: int, hidden_sizes: list = None, output_size: int = 2, dropout_rate: float = 0.3):
+        super(FeedforwardNN_Simple, self).__init__()
+        
+        if hidden_sizes is None:
+            hidden_sizes = [128, 64]
+        
+        layers = []
+        prev_size = input_size
+        
+        # Create hidden layers WITHOUT BatchNorm
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_size = hidden_size
+        
+        # Output layer
+        layers.append(nn.Linear(prev_size, output_size))
+        
+        self.network = nn.Sequential(*layers)
+    
+    def forward(self, x):
+        return self.network(x)
+
+
 class FeedforwardNN_DP(nn.Module):
     """
     Differential Privacy compatible FNN using GroupNorm instead of BatchNorm.
@@ -156,7 +188,7 @@ def get_model_class(model_type: str):
         Model class
     """
     if model_type == 'fnn_baseline':
-        return FeedforwardNN
+        return FeedforwardNN_Simple  # Use simple version without BatchNorm
     elif model_type.startswith('fnn_dp'):
         return FeedforwardNN_DP
     elif model_type.startswith('lr_dp'):
@@ -194,6 +226,13 @@ def create_model(dataset: str, model_type: str) -> nn.Module:
         )
     elif model_type.startswith('fl_fnn'):
         # FL FNN uses simpler [128, 64] architecture
+        return model_class(
+            input_size=config['input_size'],
+            hidden_sizes=[128, 64],
+            output_size=config['output_size']
+        )
+    elif model_type == 'fnn_baseline':
+        # Baseline models use [128, 64] architecture (matching FL training)
         return model_class(
             input_size=config['input_size'],
             hidden_sizes=[128, 64],

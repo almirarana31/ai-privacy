@@ -204,6 +204,8 @@ class ModelLoader:
     def load_all_models(self) -> Dict[str, dict]:
         """
         Load all discovered models into memory.
+        For duplicate model keys (e.g., multiple baseline models for same dataset),
+        only the newest file (by modification time) is loaded.
         
         Returns:
             Dictionary of model info with keys and metadata
@@ -211,20 +213,39 @@ class ModelLoader:
         model_files = self.discover_models()
         loaded_info = {}
         
+        # Group files by their model key and keep only the newest
+        file_groups = {}
         for filepath in model_files:
+            info = self.parse_model_filename(filepath)
+            if info is None:
+                print(f"Skipping unparseable file: {filepath}")
+                continue
+            
+            key = self.get_model_key(
+                info['dataset'], 
+                info['model_type'], 
+                info.get('epsilon'),
+                info.get('aggregation')
+            )
+            
+            # Get file modification time
+            mtime = os.path.getmtime(filepath)
+            
+            # Keep only the newest file for each key
+            if key not in file_groups or mtime > file_groups[key]['mtime']:
+                file_groups[key] = {
+                    'filepath': filepath,
+                    'mtime': mtime,
+                    'info': info
+                }
+        
+        # Now load the selected files
+        for key, file_data in file_groups.items():
+            filepath = file_data['filepath']
+            info = file_data['info']
+            
             try:
-                info = self.parse_model_filename(filepath)
-                if info is None:
-                    print(f"Skipping unparseable file: {filepath}")
-                    continue
-                
                 model, metadata = self.load_model(filepath)
-                key = self.get_model_key(
-                    info['dataset'], 
-                    info['model_type'], 
-                    info.get('epsilon'),
-                    info.get('aggregation')
-                )
                 
                 self.loaded_models[key] = model
                 self.model_metadata[key] = {
@@ -241,7 +262,7 @@ class ModelLoader:
                     'loaded': True
                 }
                 
-                print(f"✓ Loaded: {key}")
+                print(f"✓ Loaded: {key} from {os.path.basename(filepath)}")
                 
             except Exception as e:
                 print(f"✗ Failed to load {filepath}: {e}")
