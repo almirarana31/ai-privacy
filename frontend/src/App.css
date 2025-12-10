@@ -1333,3 +1333,355 @@ body {
   border-color: #999;
   background: #f5f5f5;
 }
+
+/* Dataset Explorer Tab */
+.dataset-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  background: white;
+}
+
+.dataset-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dataset-content h2 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.dataset-selector {
+  margin-bottom: 2rem;
+}
+
+.dataset-selector label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.dataset-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dataset-btn {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dataset-btn:hover {
+  border-color: #667eea;
+  background: #f5f7ff;
+  transform: translateY(-2px);
+}
+
+.dataset-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
+.dataset-info {
+  animation: fadeIn 0.3s ease;
+}
+
+.dataset-info h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.info-card {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.info-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.info-card h4 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color: #667eea;
+}
+
+.info-card p {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+  color: #555;
+}
+
+.info-card em {
+  color: #888;
+  font-style: italic;
+}
+
+.info-card .note {
+  font-weight: bold;
+  color: #d9534f;
+  margin-top: 0.5rem;
+}
+
+/* Visualization Tab */
+.visualization-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  background: white;
+}
+
+.visualization-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.visualization-content h2 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.viz-section {
+  margin-bottom: 2.5rem;
+}
+
+.viz-section h3 {
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+  color: #333;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 0.5rem;
+}
+
+.viz-placeholder {
+  background: linear-gradient(135deg, #f5f7ff 0%, #e8ecf8 100%);
+  border: 2px dashed #667eea;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  color: #667eea;
+}
+
+.viz-placeholder .placeholder-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.viz-placeholder p {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: #555;
+}
+
+.viz-placeholder ul {
+  text-align: left;
+  display: inline-block;
+  list-style: none;
+  padding: 1rem 2rem;
+}
+
+.viz-placeholder li {
+  padding: 0.5rem 0;
+  color: #667eea;
+  font-weight: 500;
+}
+
+/* Privacy Levels Grid */
+.privacy-levels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.privacy-card {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.privacy-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.privacy-card h4 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.privacy-bar {
+  height: 30px;
+  border-radius: 4px;
+  margin: 1rem 0;
+  background: #ddd;
+}
+
+.privacy-bar.very-high {
+  background: linear-gradient(90deg, #d9534f 0%, #ec971f 100%);
+}
+
+.privacy-bar.high {
+  background: linear-gradient(90deg, #ec971f 0%, #5cb85c 100%);
+}
+
+.privacy-bar.medium {
+  background: linear-gradient(90deg, #5cb85c 0%, #5bc0de 100%);
+}
+
+.privacy-bar.low {
+  background: linear-gradient(90deg, #5bc0de 0%, #999 100%);
+}
+
+.privacy-card p {
+  margin: 0.5rem 0;
+  color: #555;
+  line-height: 1.6;
+}
+
+.privacy-card .note {
+  font-weight: bold;
+  color: #d9534f;
+  margin-top: 0.5rem;
+}
+
+/* Aggregator Info Grid */
+.aggregator-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.aggregator-card {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.aggregator-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  border-color: #667eea;
+}
+
+.aggregator-card h4 {
+  font-size: 1.1rem;
+  color: #667eea;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.aggregator-card p {
+  margin-bottom: 0.5rem;
+  color: #555;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.aggregator-card strong {
+  color: #333;
+}
+
+/* Interpretation Guide */
+.interpretation-guide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.guide-item {
+  background: linear-gradient(135deg, #f5f7ff 0%, #e8ecf8 100%);
+  border-left: 4px solid #667eea;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.guide-item:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+  transform: translateX(4px);
+}
+
+.guide-item h4 {
+  color: #667eea;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.guide-item p {
+  color: #555;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dataset-content h2,
+  .visualization-content h2 {
+    font-size: 1.5rem;
+  }
+
+  .info-grid,
+  .privacy-levels,
+  .aggregator-info,
+  .interpretation-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .dataset-buttons {
+    flex-direction: column;
+  }
+
+  .dataset-btn {
+    width: 100%;
+  }
+
+  .dataset-container,
+  .visualization-container {
+    padding: 1rem;
+  }
+}

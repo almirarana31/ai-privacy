@@ -47,7 +47,7 @@ type EthicsResponse = {
 };
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'playground' | 'survey'>('playground');
+  const [activeTab, setActiveTab] = useState<'playground' | 'survey' | 'dataset' | 'visualization'>('playground');
   const [trainingMode, setTrainingMode] = useState<'dp' | 'fl'>('dp');
   const [aggregator, setAggregator] = useState<'fedavg' | 'fedprox' | 'qffl' | 'scaffold' | 'fedadam'>('fedavg');
   const [config, setConfig] = useState<Config>({
@@ -68,6 +68,7 @@ const App: React.FC = () => {
   const [showEthicsPrompt, setShowEthicsPrompt] = useState(false);
   const [ethicsResponses, setEthicsResponses] = useState<EthicsResponse[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [selectedDataset, setSelectedDataset] = useState<'diabetes' | 'adult'>('diabetes');
 
   const isLoading = status === 'running';
 
@@ -459,6 +460,18 @@ const App: React.FC = () => {
             🎮 Interactive Playground
           </button>
           <button 
+            className={`tab ${activeTab === 'dataset' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dataset')}
+          >
+            📊 Dataset Explorer
+          </button>
+          <button 
+            className={`tab ${activeTab === 'visualization' ? 'active' : ''}`}
+            onClick={() => setActiveTab('visualization')}
+          >
+            📈 Visualizations
+          </button>
+          <button 
             className={`tab ${activeTab === 'survey' ? 'active' : ''}`}
             onClick={() => setActiveTab('survey')}
           >
@@ -798,6 +811,234 @@ const App: React.FC = () => {
           height="90%" 
           style={{ border: 'none', borderRadius: '8px' }}
           >Loading…</iframe>
+        </div>
+      )}
+
+      {activeTab === 'dataset' && (
+        <div className="dataset-container">
+          <div className="dataset-content">
+            <h2>📊 Dataset Explorer</h2>
+            
+            <div className="dataset-selector">
+              <label>Select Dataset:</label>
+              <div className="dataset-buttons">
+                <button 
+                  className={`dataset-btn ${selectedDataset === 'diabetes' ? 'active' : ''}`}
+                  onClick={() => setSelectedDataset('diabetes')}
+                >
+                  🩺 Diabetes Dataset
+                </button>
+                <button 
+                  className={`dataset-btn ${selectedDataset === 'adult' ? 'active' : ''}`}
+                  onClick={() => setSelectedDataset('adult')}
+                >
+                  👥 Adult Income Dataset
+                </button>
+              </div>
+            </div>
+
+            {selectedDataset === 'diabetes' && (
+              <div className="dataset-info">
+                <h3>Diabetes Dataset</h3>
+                <div className="info-grid">
+                  <div className="info-card">
+                    <h4>📌 Overview</h4>
+                    <p><strong>Features:</strong> 21 numerical features</p>
+                    <p><strong>Target:</strong> Binary classification (diabetes/no diabetes)</p>
+                    <p><strong>Records:</strong> 768 samples (train: 614, test: 154)</p>
+                    <p><strong>Preprocessing:</strong> StandardScaler normalization</p>
+                  </div>
+                  
+                  <div className="info-card">
+                    <h4>📊 Class Distribution</h4>
+                    <p><strong>Positive (Diabetes):</strong> 268 samples (34.9%)</p>
+                    <p><strong>Negative (No Diabetes):</strong> 500 samples (65.1%)</p>
+                    <p>✅ Balanced dataset suitable for binary classification</p>
+                  </div>
+
+                  <div className="info-card">
+                    <h4>🔍 Features</h4>
+                    <p><strong>Pregnancies:</strong> Number of pregnancies</p>
+                    <p><strong>Glucose:</strong> Plasma glucose concentration</p>
+                    <p><strong>BloodPressure:</strong> Diastolic blood pressure (mm Hg)</p>
+                    <p><strong>SkinThickness:</strong> Triceps skin fold thickness (mm)</p>
+                    <p><strong>Insulin:</strong> 2-Hour serum insulin (mu U/ml)</p>
+                    <p><strong>BMI:</strong> Body mass index (weight in kg/(height in m)²)</p>
+                    <p><strong>DiabetesPedigreeFunction:</strong> Diabetes pedigree function</p>
+                    <p><strong>Age:</strong> Age (years)</p>
+                    <p><em>Plus 13 additional numerical features</em></p>
+                  </div>
+
+                  <div className="info-card">
+                    <h4>✨ Data Quality</h4>
+                    <p><strong>Missing Values:</strong> None</p>
+                    <p><strong>Duplicates:</strong> None</p>
+                    <p><strong>Data Type:</strong> All numerical features</p>
+                    <p><strong>Train/Test Split:</strong> 80/20</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedDataset === 'adult' && (
+              <div className="dataset-info">
+                <h3>Adult Income Dataset</h3>
+                <div className="info-grid">
+                  <div className="info-card">
+                    <h4>📌 Overview</h4>
+                    <p><strong>Features:</strong> 14 categorical/numerical features</p>
+                    <p><strong>Target:</strong> Binary classification (income ≥$50K / &lt;$50K)</p>
+                    <p><strong>Records:</strong> 30,162 samples (train: 24,129, test: 6,033)</p>
+                    <p><strong>Preprocessing:</strong> Categorical encoding + StandardScaler</p>
+                  </div>
+                  
+                  <div className="info-card">
+                    <h4>📊 Class Distribution</h4>
+                    <p><strong>Income ≥$50K:</strong> 7,841 samples (25.98%)</p>
+                    <p><strong>Income &lt;$50K:</strong> 22,321 samples (74.02%)</p>
+                    <p>⚠️ Imbalanced dataset - more samples in lower income bracket</p>
+                  </div>
+
+                  <div className="info-card">
+                    <h4>🔍 Features</h4>
+                    <p><strong>Age:</strong> Age of person (numerical)</p>
+                    <p><strong>Workclass:</strong> Employment type (categorical)</p>
+                    <p><strong>Education:</strong> Education level (categorical)</p>
+                    <p><strong>Marital Status:</strong> Marital status (categorical)</p>
+                    <p><strong>Occupation:</strong> Type of occupation (categorical)</p>
+                    <p><strong>Relationship:</strong> Family relationship (categorical)</p>
+                    <p><strong>Race:</strong> Race (categorical)</p>
+                    <p><strong>Hours-per-week:</strong> Hours worked per week (numerical)</p>
+                    <p><em>Plus 6 additional features including country, capital gains/loss</em></p>
+                  </div>
+
+                  <div className="info-card">
+                    <h4>✨ Data Quality</h4>
+                    <p><strong>Missing Values:</strong> Some encoded as '?'</p>
+                    <p><strong>Categorical Features:</strong> One-hot encoded</p>
+                    <p><strong>Data Type:</strong> Mixed numerical and categorical</p>
+                    <p><strong>Train/Test Split:</strong> 80/20</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'visualization' && (
+        <div className="visualization-container">
+          <div className="visualization-content">
+            <h2>📈 Results Visualization</h2>
+            
+            <div className="viz-section">
+              <h3>Model Performance Comparison</h3>
+              <div className="viz-placeholder">
+                <div className="placeholder-icon">📊</div>
+                <p>Run experiments in the Playground tab to see performance comparisons across:</p>
+                <ul>
+                  <li>✅ Baseline Model Performance</li>
+                  <li>🔒 Differential Privacy Impact (by epsilon)</li>
+                  <li>🤝 Federated Learning Aggregation Methods</li>
+                  <li>📊 Privacy-Utility Tradeoff Analysis</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="viz-section">
+              <h3>📊 Privacy Levels</h3>
+              <div className="privacy-levels">
+                <div className="privacy-card">
+                  <h4>ε = 0.5</h4>
+                  <div className="privacy-bar very-high"></div>
+                  <p>🔐 <strong>Very High Privacy</strong></p>
+                  <p>Smallest privacy loss</p>
+                  <p className="note">↓ Lowest Accuracy</p>
+                </div>
+                <div className="privacy-card">
+                  <h4>ε = 1.0</h4>
+                  <div className="privacy-bar high"></div>
+                  <p>🔐 <strong>High Privacy</strong></p>
+                  <p>Strong privacy guarantee</p>
+                </div>
+                <div className="privacy-card">
+                  <h4>ε = 3.0</h4>
+                  <div className="privacy-bar medium"></div>
+                  <p>🟡 <strong>Moderate Privacy</strong></p>
+                  <p>Balanced privacy-utility</p>
+                </div>
+                <div className="privacy-card">
+                  <h4>ε = 10.0</h4>
+                  <div className="privacy-bar low"></div>
+                  <p>⚠️ <strong>Low Privacy</strong></p>
+                  <p>Weak privacy guarantee</p>
+                  <p className="note">↑ Highest Accuracy</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="viz-section">
+              <h3>🤝 Federated Learning Aggregation Methods</h3>
+              <div className="aggregator-info">
+                <div className="aggregator-card">
+                  <h4>FedAvg</h4>
+                  <p><strong>Mechanism:</strong> Simple averaging of client models</p>
+                  <p><strong>Best for:</strong> IID data, homogeneous clients</p>
+                  <p><strong>Pros:</strong> Simple, stable</p>
+                </div>
+                <div className="aggregator-card">
+                  <h4>FedProx</h4>
+                  <p><strong>Mechanism:</strong> Weighted averaging with proximal term</p>
+                  <p><strong>Best for:</strong> Non-IID data, heterogeneous systems</p>
+                  <p><strong>Pros:</strong> Better convergence with data heterogeneity</p>
+                </div>
+                <div className="aggregator-card">
+                  <h4>q-FedAvg</h4>
+                  <p><strong>Mechanism:</strong> Reweights client contributions by performance</p>
+                  <p><strong>Best for:</strong> Fairness-critical applications</p>
+                  <p><strong>Pros:</strong> Prioritizes underperforming clients</p>
+                </div>
+                <div className="aggregator-card">
+                  <h4>SCAFFOLD</h4>
+                  <p><strong>Mechanism:</strong> Control variates for drift reduction</p>
+                  <p><strong>Best for:</strong> Highly non-IID data</p>
+                  <p><strong>Pros:</strong> Reduces client drift significantly</p>
+                </div>
+                <div className="aggregator-card">
+                  <h4>FedAdam</h4>
+                  <p><strong>Mechanism:</strong> Adaptive learning rates per parameter</p>
+                  <p><strong>Best for:</strong> Heterogeneous optimization</p>
+                  <p><strong>Pros:</strong> Adaptive, faster convergence</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="viz-section">
+              <h3>📚 How to Interpret Results</h3>
+              <div className="interpretation-guide">
+                <div className="guide-item">
+                  <h4>🎯 Accuracy</h4>
+                  <p>Percentage of correct predictions. Higher is better. Baseline shows maximum accuracy without privacy constraints.</p>
+                </div>
+                <div className="guide-item">
+                  <h4>🔒 Accuracy Loss</h4>
+                  <p>Difference between baseline and private model accuracy. Shows privacy-utility tradeoff: lower ε means higher loss.</p>
+                </div>
+                <div className="guide-item">
+                  <h4>F1 Score</h4>
+                  <p>Harmonic mean of precision and recall. Balances false positives and false negatives. Best for imbalanced datasets.</p>
+                </div>
+                <div className="guide-item">
+                  <h4>Precision</h4>
+                  <p>Accuracy of positive predictions. Percentage of predicted positives that are actually positive.</p>
+                </div>
+                <div className="guide-item">
+                  <h4>Recall</h4>
+                  <p>Coverage of actual positives. Percentage of actual positives correctly identified.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
