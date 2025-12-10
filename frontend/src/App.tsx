@@ -261,13 +261,12 @@ const App: React.FC = () => {
       const data = await response.json();
       const aggLabel = getAggregatorLabel(aggregator);
 
+      const baselineAcc = data.baseline_accuracy || 0;
       const flAccuracy = data.accuracy || 0;
       const result: Result = {
-        baselineAccuracy: flAccuracy,
+        baselineAccuracy: baselineAcc,
         privateAccuracy: flAccuracy,
-        accuracyLoss: comparison.baseline
-          ? comparison.baseline.baselineAccuracy - flAccuracy
-          : undefined,
+        accuracyLoss: data.accuracy_loss !== undefined ? data.accuracy_loss : (baselineAcc - flAccuracy),
         f1Score: data.f1_score,
         precision: data.precision,
         recall: data.recall,
@@ -641,15 +640,15 @@ const App: React.FC = () => {
                     <div className="small-metrics">
                       <div className="small-metric">
                         <span>F1 Score:</span>
-                        <strong>{comparison.baseline.f1Score?.toFixed(4) || 'N/A'}</strong>
+                        <strong>{comparison.baseline.f1Score !== undefined ? `${comparison.baseline.f1Score.toFixed(2)}%` : 'N/A'}</strong>
                       </div>
                       <div className="small-metric">
                         <span>Precision:</span>
-                        <strong>{comparison.baseline.precision?.toFixed(4) || 'N/A'}</strong>
+                        <strong>{comparison.baseline.precision !== undefined ? `${comparison.baseline.precision.toFixed(2)}%` : 'N/A'}</strong>
                       </div>
                       <div className="small-metric">
                         <span>Recall:</span>
-                        <strong>{comparison.baseline.recall?.toFixed(4) || 'N/A'}</strong>
+                        <strong>{comparison.baseline.recall !== undefined ? `${comparison.baseline.recall.toFixed(2)}%` : 'N/A'}</strong>
                       </div>
                       <div className="small-metric">
                         <span>Samples:</span>
@@ -665,25 +664,25 @@ const App: React.FC = () => {
                     <div className="model-info">{comparison.private.modelUsed}</div>
                     <div className="big-metric">
                       <div className="metric-label">Accuracy</div>
-                      <div className="metric-value">{comparison.private.baselineAccuracy.toFixed(2)}%</div>
+                      <div className="metric-value">{comparison.private.privateAccuracy?.toFixed(2) || comparison.private.baselineAccuracy.toFixed(2)}%</div>
                     </div>
                     {comparison.baseline && (
                       <div className="accuracy-loss">
-                        Loss: {(comparison.baseline.baselineAccuracy - comparison.private.baselineAccuracy).toFixed(2)}%
+                        Loss: {(comparison.baseline.baselineAccuracy - (comparison.private.privateAccuracy || comparison.private.baselineAccuracy)).toFixed(2)}%
                       </div>
                     )}
                     <div className="small-metrics">
                       <div className="small-metric">
                         <span>F1 Score:</span>
-                        <strong>{comparison.private.f1Score?.toFixed(4) || 'N/A'}</strong>
+                        <strong>{comparison.private.f1Score !== undefined ? `${comparison.private.f1Score.toFixed(2)}%` : 'N/A'}</strong>
                       </div>
                       <div className="small-metric">
                         <span>Precision:</span>
-                        <strong>{comparison.private.precision?.toFixed(4) || 'N/A'}</strong>
+                        <strong>{comparison.private.precision !== undefined ? `${comparison.private.precision.toFixed(2)}%` : 'N/A'}</strong>
                       </div>
                       <div className="small-metric">
                         <span>Recall:</span>
-                        <strong>{comparison.private.recall?.toFixed(4) || 'N/A'}</strong>
+                        <strong>{comparison.private.recall !== undefined ? `${comparison.private.recall.toFixed(2)}%` : 'N/A'}</strong>
                       </div>
                       <div className="small-metric">
                         <span>Samples:</span>
@@ -699,25 +698,25 @@ const App: React.FC = () => {
                     <div className="model-info">{comparison.private.modelUsed}</div>
                     <div className="big-metric">
                       <div className="metric-label">Accuracy</div>
-                      <div className="metric-value">{comparison.private.baselineAccuracy.toFixed(2)}%</div>
+                      <div className="metric-value">{comparison.private.privateAccuracy?.toFixed(2) || comparison.private.baselineAccuracy.toFixed(2)}%</div>
                     </div>
                     {comparison.baseline && (
                       <div className="accuracy-loss">
-                        Diff vs Baseline: {(comparison.baseline.baselineAccuracy - comparison.private.baselineAccuracy).toFixed(2)}%
+                        Diff vs Baseline: {(comparison.baseline.baselineAccuracy - (comparison.private.privateAccuracy || comparison.private.baselineAccuracy)).toFixed(2)}%
                       </div>
                     )}
                     <div className="small-metrics">
                       <div className="small-metric">
                         <span>F1 Score:</span>
-                        <strong>{comparison.private.f1Score?.toFixed(4) || 'N/A'}</strong>
+                        <strong>{comparison.private.f1Score !== undefined ? `${comparison.private.f1Score.toFixed(2)}%` : 'N/A'}</strong>
                       </div>
                       <div className="small-metric">
                         <span>Precision:</span>
-                        <strong>{comparison.private.precision?.toFixed(4) || 'N/A'}</strong>
+                        <strong>{comparison.private.precision !== undefined ? `${comparison.private.precision.toFixed(2)}%` : 'N/A'}</strong>
                       </div>
                       <div className="small-metric">
                         <span>Recall:</span>
-                        <strong>{comparison.private.recall?.toFixed(4) || 'N/A'}</strong>
+                        <strong>{comparison.private.recall !== undefined ? `${comparison.private.recall.toFixed(2)}%` : 'N/A'}</strong>
                       </div>
                       <div className="small-metric">
                         <span>Samples:</span>

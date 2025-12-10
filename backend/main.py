@@ -63,6 +63,8 @@ class ExperimentResult(BaseModel):
 class FederatedExperimentResult(BaseModel):
     """Result from running a federated learning experiment."""
     accuracy: float
+    baseline_accuracy: Optional[float] = None
+    accuracy_loss: Optional[float] = None
     f1_score: float
     precision: float
     recall: float
@@ -553,6 +555,7 @@ async def list_fl_models():
 async def run_federated_experiment(config: FederatedExperimentConfig):
     """
     Run a federated learning experiment using a trained FL model.
+    Compares FL model performance against centralized baseline.
     """
     # Validate dataset
     if config.dataset not in MODEL_CONFIGS:
@@ -579,6 +582,23 @@ async def run_federated_experiment(config: FederatedExperimentConfig):
     
     X_test, y_test = test_data
     
+    # Get baseline model - use matching model type baseline
+    if config.model_type == 'fnn':
+        baseline_type = 'fnn_baseline'
+    else:  # LR
+        baseline_type = 'lr_baseline'
+    
+    baseline_model = loader.get_model(config.dataset, baseline_type, None)
+    if baseline_model is None:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Baseline {config.model_type.upper()} model not found for {config.dataset}"
+        )
+    
+    # Evaluate baseline
+    baseline_metrics = evaluate_model(baseline_model, X_test, y_test)
+    print(f"📊 Baseline {config.model_type.upper()} metrics: {baseline_metrics}")
+    
     # Get FL model
     fl_model_type = f"fl_{config.model_type}"
     fl_model = loader.get_model(config.dataset, fl_model_type, aggregation=config.aggregation)
@@ -589,16 +609,23 @@ async def run_federated_experiment(config: FederatedExperimentConfig):
             detail=f"FL model not found: {config.dataset}/{config.model_type}/{config.aggregation}"
         )
     
-    # Evaluate
-    print(f"\nEvaluating FL model: {config.dataset}/{config.model_type}/{config.aggregation}")
-    metrics = evaluate_model(fl_model, X_test, y_test)
+    # Evaluate FL model
+    print(f"🔗 Evaluating FL model: {config.dataset}/{config.model_type}/{config.aggregation}")
+    fl_metrics = evaluate_model(fl_model, X_test, y_test)
+    
+    # Calculate accuracy loss
+    accuracy_loss = baseline_metrics['accuracy'] - fl_metrics['accuracy']
+    
+    print(f"📤 FL Result: baseline={baseline_metrics['accuracy']:.4f}, fl={fl_metrics['accuracy']:.4f}, loss={accuracy_loss:.4f}")
     
     return FederatedExperimentResult(
-        accuracy=metrics['accuracy'],
-        f1_score=metrics['f1_score'],
-        precision=metrics['precision'],
-        recall=metrics['recall'],
-        samples_evaluated=metrics['samples'],
+        accuracy=fl_metrics['accuracy'],
+        baseline_accuracy=baseline_metrics['accuracy'],
+        accuracy_loss=accuracy_loss,
+        f1_score=fl_metrics['f1_score'],
+        precision=fl_metrics['precision'],
+        recall=fl_metrics['recall'],
+        samples_evaluated=fl_metrics['samples'],
         model_used=f"{config.dataset}_{fl_model_type}_{config.aggregation}",
         aggregation=config.aggregation,
         model_type=config.model_type,
