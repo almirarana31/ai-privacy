@@ -310,24 +310,18 @@ async def run_experiment(config: ExperimentConfig):
     
     X_test, y_test = test_data
     
-    # Get baseline model - always use FNN baseline for true non-private comparison
-    # (LR models don't have a non-DP baseline, only DP versions)
-    baseline_type = 'fnn_baseline'
+    # Get baseline model - use matching model type baseline
+    # FNN uses fnn_baseline, LR uses lr_baseline
+    if config.model_type == 'fnn':
+        baseline_type = 'fnn_baseline'
+    else:  # LR
+        baseline_type = 'lr_baseline'
+    
     baseline_epsilon = None
     
     baseline_model = loader.get_model(config.dataset, baseline_type, baseline_epsilon)
     if baseline_model is None:
-        # Try to find any baseline
-        if config.model_type == 'fnn':
-            raise HTTPException(status_code=500, detail="Baseline FNN model not found")
-        else:
-            # For LR, use lowest available epsilon as "baseline"
-            epsilons = loader.get_available_epsilons(config.dataset, 'lr_dp')
-            if epsilons:
-                baseline_model = loader.get_model(config.dataset, 'lr_dp', epsilons[0])
-    
-    if baseline_model is None:
-        raise HTTPException(status_code=500, detail=f"No baseline model found for {config.model_type}")
+        raise HTTPException(status_code=500, detail=f"Baseline {config.model_type.upper()} model not found for {config.dataset}")
     
     # Evaluate baseline
     baseline_metrics = evaluate_model(baseline_model, X_test, y_test)

@@ -182,13 +182,15 @@ def get_model_class(model_type: str):
     Get the appropriate model class based on model type string.
     
     Args:
-        model_type: One of 'fnn_baseline', 'fnn_dp', 'lr_dp', 'fl_fnn', 'fl_lr'
+        model_type: One of 'fnn_baseline', 'lr_baseline', 'fnn_dp', 'lr_dp', 'fl_fnn', 'fl_lr'
     
     Returns:
         Model class
     """
     if model_type == 'fnn_baseline':
         return FeedforwardNN_Simple  # Use simple version without BatchNorm
+    elif model_type == 'lr_baseline':
+        return LogisticRegressionModel  # Simple LR for baseline
     elif model_type.startswith('fnn_dp'):
         return FeedforwardNN_DP
     elif model_type.startswith('lr_dp'):
@@ -218,7 +220,7 @@ def create_model(dataset: str, model_type: str) -> nn.Module:
     
     model_class = get_model_class(model_type)
     
-    if model_type.startswith('lr') or model_type.startswith('fl_lr'):
+    if model_type.startswith('lr') or model_type.startswith('fl_lr') or model_type == 'lr_baseline':
         # Logistic regression only needs input and output size
         return model_class(
             input_size=config['input_size'],
