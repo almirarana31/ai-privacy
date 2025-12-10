@@ -90,6 +90,46 @@ class LogisticRegression_DP(nn.Module):
         return self.linear(x)
 
 
+class FederatedNN(nn.Module):
+    """
+    Feedforward Neural Network for Federated Learning.
+    Simpler architecture without BatchNorm for FL compatibility.
+    """
+    def __init__(self, input_size: int, hidden_sizes: list = None, output_size: int = 2, dropout_rate: float = 0.3):
+        super(FederatedNN, self).__init__()
+        
+        if hidden_sizes is None:
+            hidden_sizes = [128, 64]
+        
+        layers = []
+        prev_size = input_size
+        
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_size = hidden_size
+        
+        layers.append(nn.Linear(prev_size, output_size))
+        
+        self.network = nn.Sequential(*layers)
+    
+    def forward(self, x):
+        return self.network(x)
+
+
+class LogisticRegressionModel(nn.Module):
+    """
+    Simple Logistic Regression for Federated Learning.
+    """
+    def __init__(self, input_size: int, output_size: int = 2):
+        super(LogisticRegressionModel, self).__init__()
+        self.linear = nn.Linear(input_size, output_size)
+    
+    def forward(self, x):
+        return self.linear(x)
+
+
 # Model configuration constants
 MODEL_CONFIGS = {
     'diabetes': {
@@ -110,7 +150,7 @@ def get_model_class(model_type: str):
     Get the appropriate model class based on model type string.
     
     Args:
-        model_type: One of 'fnn_baseline', 'fnn_dp', 'lr_dp'
+        model_type: One of 'fnn_baseline', 'fnn_dp', 'lr_dp', 'fl_fnn', 'fl_lr'
     
     Returns:
         Model class
@@ -121,6 +161,10 @@ def get_model_class(model_type: str):
         return FeedforwardNN_DP
     elif model_type.startswith('lr_dp'):
         return LogisticRegression_DP
+    elif model_type.startswith('fl_fnn') or model_type == 'fnn_fl':
+        return FederatedNN
+    elif model_type.startswith('fl_lr') or model_type == 'lr_fl':
+        return LogisticRegressionModel
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
@@ -131,7 +175,7 @@ def create_model(dataset: str, model_type: str) -> nn.Module:
     
     Args:
         dataset: 'diabetes' or 'adult'
-        model_type: 'fnn_baseline', 'fnn_dp_eps{X}', or 'lr_dp_eps{X}'
+        model_type: 'fnn_baseline', 'fnn_dp_eps{X}', 'lr_dp_eps{X}', 'fl_fnn', 'fl_lr'
     
     Returns:
         Instantiated model (weights not loaded)
@@ -142,14 +186,21 @@ def create_model(dataset: str, model_type: str) -> nn.Module:
     
     model_class = get_model_class(model_type)
     
-    if model_type.startswith('lr'):
+    if model_type.startswith('lr') or model_type.startswith('fl_lr'):
         # Logistic regression only needs input and output size
         return model_class(
             input_size=config['input_size'],
             output_size=config['output_size']
         )
+    elif model_type.startswith('fl_fnn'):
+        # FL FNN uses simpler [128, 64] architecture
+        return model_class(
+            input_size=config['input_size'],
+            hidden_sizes=[128, 64],
+            output_size=config['output_size']
+        )
     else:
-        # FNN models use hidden layers
+        # Standard FNN models use [128, 64, 32] architecture
         return model_class(
             input_size=config['input_size'],
             hidden_sizes=config['hidden_sizes'],

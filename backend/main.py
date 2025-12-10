@@ -40,6 +40,13 @@ class ExperimentConfig(BaseModel):
     epsilon: Optional[float] = None  # Required if dp_enabled is True
 
 
+class FederatedExperimentConfig(BaseModel):
+    """Configuration for running a federated learning experiment."""
+    dataset: str  # 'diabetes' or 'adult'
+    model_type: str  # 'fnn' or 'lr'
+    aggregation: str  # 'FedAvg', 'FedProx', 'q-FedAvg', 'SCAFFOLD', 'FedAdam'
+
+
 class ExperimentResult(BaseModel):
     """Result from running an experiment."""
     baseline_accuracy: float
@@ -51,6 +58,19 @@ class ExperimentResult(BaseModel):
     epsilon: Optional[float] = None
     samples_evaluated: int
     model_used: str
+
+
+class FederatedExperimentResult(BaseModel):
+    """Result from running a federated learning experiment."""
+    accuracy: float
+    f1_score: float
+    precision: float
+    recall: float
+    samples_evaluated: int
+    model_used: str
+    aggregation: str
+    model_type: str
+    dataset: str
 
 
 class ModelInfo(BaseModel):
@@ -290,9 +310,10 @@ async def run_experiment(config: ExperimentConfig):
     
     X_test, y_test = test_data
     
-    # Get baseline model
-    baseline_type = 'fnn_baseline' if config.model_type == 'fnn' else 'lr_dp'
-    baseline_epsilon = None if config.model_type == 'fnn' else 0.5  # Use lowest epsilon for LR baseline
+    # Get baseline model - always use FNN baseline for true non-private comparison
+    # (LR models don't have a non-DP baseline, only DP versions)
+    baseline_type = 'fnn_baseline'
+    baseline_epsilon = None
     
     baseline_model = loader.get_model(config.dataset, baseline_type, baseline_epsilon)
     if baseline_model is None:
@@ -464,6 +485,131 @@ async def run_experiment_with_upload(
             result.model_used = f"{dataset}_{model_type_key}_eps{result.epsilon}"
     
     return result
+
+
+@app.get("/api/fl/aggregations")
+async def get_available_aggregations():
+    """Get list of available FL aggregation methods."""
+    return {
+        "aggregations": [
+            {
+                "value": "FedAvg",
+                "label": "FedAvg",
+                "description": "Federated Averaging - Classic weighted average based on client data sizes"
+            },
+            {
+                "value": "FedProx",
+                "label": "FedProx",
+                "description": "Federated Proximal - Adds proximal term for heterogeneous client data"
+            },
+            {
+                "value": "q-FedAvg",
+                "label": "q-FedAvg",
+                "description": "Fairness-weighted aggregation using Lipschitz constants"
+            },
+            {
+                "value": "SCAFFOLD",
+                "label": "SCAFFOLD",
+                "description": "Control variates approach to handle client drift"
+            },
+            {
+                "value": "FedAdam",
+                "label": "FedAdam",
+                "description": "Adaptive federated optimization with momentum and adaptive learning rates"
+            }
+        ]
+    }
+
+
+@app.get("/api/fl/models")
+async def list_fl_models():
+    """List all available federated learning models."""
+    loader = get_model_loader()
+    all_models = loader.list_available_models()
+    
+    # Filter for FL models only
+    fl_models = [
+        m for m in all_models 
+        if m.get('model_type', '').startswith('fl_')
+    ]
+    
+    # Group by dataset and model type
+    grouped = {}
+    for model in fl_models:
+        dataset = model['dataset']
+        model_type = model['model_type'].replace('fl_', '').upper()
+        
+        if dataset not in grouped:
+            grouped[dataset] = {}
+        if model_type not in grouped[dataset]:
+            grouped[dataset][model_type] = []
+        
+        grouped[dataset][model_type].append({
+            'aggregation': model.get('aggregation', 'Unknown'),
+            'key': model['key']
+        })
+    
+    return {
+        "models": grouped,
+        "total_count": len(fl_models)
+    }
+
+
+@app.post("/api/fl/experiment", response_model=FederatedExperimentResult)
+async def run_federated_experiment(config: FederatedExperimentConfig):
+    """
+    Run a federated learning experiment using a trained FL model.
+    """
+    # Validate dataset
+    if config.dataset not in MODEL_CONFIGS:
+        raise HTTPException(status_code=400, detail=f"Unknown dataset: {config.dataset}")
+    
+    # Validate aggregation method
+    valid_aggs = ["FedAvg", "FedProx", "q-FedAvg", "SCAFFOLD", "FedAdam"]
+    if config.aggregation not in valid_aggs:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Unknown aggregation: {config.aggregation}. Valid: {valid_aggs}"
+        )
+    
+    loader = get_model_loader()
+    processor = get_data_processor()
+    
+    # Get test data
+    test_data = processor.get_test_data(config.dataset)
+    if test_data is None:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Test data not loaded for {config.dataset}. Run notebook to save test data."
+        )
+    
+    X_test, y_test = test_data
+    
+    # Get FL model
+    fl_model_type = f"fl_{config.model_type}"
+    fl_model = loader.get_model(config.dataset, fl_model_type, aggregation=config.aggregation)
+    
+    if fl_model is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"FL model not found: {config.dataset}/{config.model_type}/{config.aggregation}"
+        )
+    
+    # Evaluate
+    print(f"\nEvaluating FL model: {config.dataset}/{config.model_type}/{config.aggregation}")
+    metrics = evaluate_model(fl_model, X_test, y_test)
+    
+    return FederatedExperimentResult(
+        accuracy=metrics['accuracy'],
+        f1_score=metrics['f1_score'],
+        precision=metrics['precision'],
+        recall=metrics['recall'],
+        samples_evaluated=metrics['samples'],
+        model_used=f"{config.dataset}_{fl_model_type}_{config.aggregation}",
+        aggregation=config.aggregation,
+        model_type=config.model_type,
+        dataset=config.dataset
+    )
 
 
 # ============================================================================

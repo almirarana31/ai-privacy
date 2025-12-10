@@ -46,19 +46,24 @@ class ModelLoader:
     
     def parse_model_filename(self, filepath: str) -> Optional[dict]:
         """
-        Parse model filename to extract dataset, model type, and epsilon.
+        Parse model filename to extract dataset, model type, and metadata.
         
-        Expected format: {dataset}_{model_type}_{timestamp}.pth
+        Expected formats:
+            - {dataset}_{model_type}_{timestamp}.pth (baseline)
+            - {dataset}_{model_type}_dp_eps{X}_{timestamp}.pth (DP)
+            - fl_{MODEL}_{dataset}_{aggregation}_{timestamp}.pth (FL)
+        
         Examples:
             - diabetes_fnn_baseline_20251205_014119.pth
             - diabetes_fnn_dp_eps1.0_20251205_014119.pth
-            - adult_lr_dp_eps3.0_20251205_014119.pth
+            - fl_FNN_diabetes_FedAvg_20251210_003232.pth
+            - fl_LR_adult_FedAdam_20251210_002519.pth
         
         Args:
             filepath: Path to model file
         
         Returns:
-            Dict with 'dataset', 'model_type', 'epsilon' (if applicable)
+            Dict with 'dataset', 'model_type', 'epsilon', 'aggregation' (if applicable)
         """
         filename = os.path.basename(filepath)
         name_without_ext = filename.replace('.pth', '')
@@ -67,21 +72,44 @@ class ModelLoader:
         if len(parts) < 3:
             return None
         
+        # Check if it's a Federated Learning model
+        if parts[0] == 'fl':
+            # Format: fl_{MODEL}_{dataset}_{aggregation}_{timestamp}
+            if len(parts) < 4:
+                return None
+            
+            fl_model_type = parts[1].lower()  # 'FNN' or 'LR'
+            dataset = parts[2]  # 'diabetes' or 'adult'
+            aggregation = parts[3]  # 'FedAvg', 'FedAdam', etc.
+            
+            model_type = f"fl_{fl_model_type}"
+            
+            return {
+                'dataset': dataset,
+                'model_type': model_type,
+                'epsilon': None,
+                'aggregation': aggregation,
+                'filepath': filepath,
+                'is_federated': True
+            }
+        
+        # Standard DP/baseline models
         dataset = parts[0]  # 'diabetes' or 'adult'
         
         # Check if it's a baseline or DP model
         if 'baseline' in name_without_ext:
             model_type = f"{parts[1]}_baseline"  # e.g., 'fnn_baseline'
             epsilon = None
+            aggregation = None
         elif 'dp_eps' in name_without_ext:
             # Find epsilon value
+            epsilon = None
             for part in parts:
                 if part.startswith('eps'):
                     epsilon = float(part.replace('eps', ''))
                     break
-            else:
-                epsilon = None
             model_type = f"{parts[1]}_dp"  # e.g., 'fnn_dp' or 'lr_dp'
+            aggregation = None
         else:
             return None
         
@@ -89,21 +117,26 @@ class ModelLoader:
             'dataset': dataset,
             'model_type': model_type,
             'epsilon': epsilon,
-            'filepath': filepath
+            'aggregation': aggregation,
+            'filepath': filepath,
+            'is_federated': False
         }
     
-    def get_model_key(self, dataset: str, model_type: str, epsilon: float = None) -> str:
+    def get_model_key(self, dataset: str, model_type: str, epsilon: float = None, aggregation: str = None) -> str:
         """
         Generate a unique key for a model based on its parameters.
         
         Args:
             dataset: 'diabetes' or 'adult'
-            model_type: 'fnn_baseline', 'fnn_dp', or 'lr_dp'
+            model_type: 'fnn_baseline', 'fnn_dp', 'lr_dp', 'fl_fnn', 'fl_lr'
             epsilon: Privacy budget (for DP models)
+            aggregation: Aggregation method (for FL models)
         
         Returns:
             Unique string key
         """
+        if aggregation is not None:
+            return f"{dataset}_{model_type}_{aggregation}"
         if epsilon is not None:
             return f"{dataset}_{model_type}_eps{epsilon}"
         return f"{dataset}_{model_type}"
@@ -124,7 +157,7 @@ class ModelLoader:
         
         # Create model architecture
         model_type_full = info['model_type']
-        if info['epsilon'] is not None:
+        if info.get('epsilon') is not None:
             model_type_full = f"{info['model_type']}_eps{info['epsilon']}"
         
         model = create_model(info['dataset'], model_type_full)
@@ -139,12 +172,19 @@ class ModelLoader:
             metadata = {
                 'preprocessing': checkpoint.get('preprocessing', {}),
                 'model_architecture': checkpoint.get('model_architecture', {}),
-                'metadata': checkpoint.get('metadata', {})
+                'metadata': checkpoint.get('metadata', {}),
+                'training_config': checkpoint.get('training_config', {}),
+                'results': checkpoint.get('results', {}),
+                'aggregation': info.get('aggregation'),
+                'is_federated': info.get('is_federated', False)
             }
         else:
             # Simple format - just state dict
             state_dict = checkpoint
-            metadata = {}
+            metadata = {
+                'aggregation': info.get('aggregation'),
+                'is_federated': info.get('is_federated', False)
+            }
         
         # Handle Opacus wrapped model state dict
         # Opacus adds '_module.' prefix to all keys
@@ -179,7 +219,12 @@ class ModelLoader:
                     continue
                 
                 model, metadata = self.load_model(filepath)
-                key = self.get_model_key(info['dataset'], info['model_type'], info['epsilon'])
+                key = self.get_model_key(
+                    info['dataset'], 
+                    info['model_type'], 
+                    info.get('epsilon'),
+                    info.get('aggregation')
+                )
                 
                 self.loaded_models[key] = model
                 self.model_metadata[key] = {
@@ -190,7 +235,9 @@ class ModelLoader:
                 loaded_info[key] = {
                     'dataset': info['dataset'],
                     'model_type': info['model_type'],
-                    'epsilon': info['epsilon'],
+                    'epsilon': info.get('epsilon'),
+                    'aggregation': info.get('aggregation'),
+                    'is_federated': info.get('is_federated', False),
                     'loaded': True
                 }
                 
@@ -212,34 +259,36 @@ class ModelLoader:
         self.model_metadata.clear()
         return self.load_all_models()
     
-    def get_model(self, dataset: str, model_type: str, epsilon: float = None) -> Optional[torch.nn.Module]:
+    def get_model(self, dataset: str, model_type: str, epsilon: float = None, aggregation: str = None) -> Optional[torch.nn.Module]:
         """
         Get a loaded model by its parameters.
         
         Args:
             dataset: 'diabetes' or 'adult'
-            model_type: 'fnn_baseline', 'fnn_dp', or 'lr_dp'
+            model_type: Model type string
             epsilon: Privacy budget (for DP models)
+            aggregation: Aggregation method (for FL models)
         
         Returns:
             Model instance or None if not found
         """
-        key = self.get_model_key(dataset, model_type, epsilon)
+        key = self.get_model_key(dataset, model_type, epsilon, aggregation)
         return self.loaded_models.get(key)
     
-    def get_model_metadata(self, dataset: str, model_type: str, epsilon: float = None) -> Optional[dict]:
+    def get_model_metadata(self, dataset: str, model_type: str, epsilon: float = None, aggregation: str = None) -> Optional[dict]:
         """
         Get metadata for a loaded model.
         
         Args:
             dataset: 'diabetes' or 'adult'
-            model_type: 'fnn_baseline', 'fnn_dp', or 'lr_dp'
+            model_type: Model type string
             epsilon: Privacy budget (for DP models)
+            aggregation: Aggregation method (for FL models)
         
         Returns:
             Metadata dict or None if not found
         """
-        key = self.get_model_key(dataset, model_type, epsilon)
+        key = self.get_model_key(dataset, model_type, epsilon, aggregation)
         return self.model_metadata.get(key)
     
     def list_available_models(self) -> List[dict]:
@@ -256,6 +305,8 @@ class ModelLoader:
                 'dataset': metadata.get('dataset'),
                 'model_type': metadata.get('model_type'),
                 'epsilon': metadata.get('epsilon'),
+                'aggregation': metadata.get('aggregation'),
+                'is_federated': metadata.get('is_federated', False)
             })
         return models
     

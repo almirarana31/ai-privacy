@@ -49,7 +49,7 @@ type EthicsResponse = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'playground' | 'survey'>('playground');
   const [trainingMode, setTrainingMode] = useState<'dp' | 'fl'>('dp');
-  const [aggregator, setAggregator] = useState<'fedavg' | 'fedprox' | 'qffl' | 'scaffold'>('fedavg');
+  const [aggregator, setAggregator] = useState<'fedavg' | 'fedprox' | 'qffl' | 'scaffold' | 'fedadam'>('fedavg');
   const [config, setConfig] = useState<Config>({
     sampleDataset: 'diabetes',
     modelType: 'fnn',
@@ -95,6 +95,12 @@ const App: React.FC = () => {
       label: 'SCAFFOLD',
       description: 'Uses control variates to reduce client drift during aggregation.',
       bestFor: 'Highly non-IID data with client-specific biases.'
+    },
+    {
+      value: 'fedadam',
+      label: 'FedAdam',
+      description: 'Adaptive federated optimization with momentum and adaptive learning rates.',
+      bestFor: 'Fast convergence and handling diverse client distributions.'
     },
   ];
 
@@ -224,7 +230,18 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/experiment`, {
+      // Map frontend aggregator values to backend values
+      const aggregatorMap: Record<string, string> = {
+        'fedavg': 'FedAvg',
+        'fedprox': 'FedProx',
+        'qffl': 'q-FedAvg',
+        'scaffold': 'SCAFFOLD',
+        'fedadam': 'FedAdam',
+      };
+
+      const backendAggregator = aggregatorMap[aggregator] || 'FedAvg';
+
+      const response = await fetch(`${API_BASE_URL}/api/fl/experiment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -232,8 +249,7 @@ const App: React.FC = () => {
         body: JSON.stringify({
           dataset: config.sampleDataset,
           model_type: config.modelType,
-          dp_enabled: false,
-          epsilon: null,
+          aggregation: backendAggregator,
         }),
       });
 
@@ -245,10 +261,10 @@ const App: React.FC = () => {
       const data = await response.json();
       const aggLabel = getAggregatorLabel(aggregator);
 
-      const flAccuracy = data.private_accuracy || data.baseline_accuracy || 0;
+      const flAccuracy = data.accuracy || 0;
       const result: Result = {
         baselineAccuracy: flAccuracy,
-        privateAccuracy: data.private_accuracy,
+        privateAccuracy: flAccuracy,
         accuracyLoss: comparison.baseline
           ? comparison.baseline.baselineAccuracy - flAccuracy
           : undefined,
@@ -258,7 +274,7 @@ const App: React.FC = () => {
         epsilon: undefined,
         samplesEvaluated: data.samples_evaluated || 0,
         modelUsed: `${aggLabel} (Federated)`,
-        aggregator,
+        aggregator: backendAggregator,
         strategy: 'fl',
       };
 
