@@ -69,6 +69,8 @@ const App: React.FC = () => {
   const [ethicsResponses, setEthicsResponses] = useState<EthicsResponse[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedDataset, setSelectedDataset] = useState<'diabetes' | 'adult'>('diabetes');
+  const [lastEthicsPromptTime, setLastEthicsPromptTime] = useState<number>(0);
+  const ETHICS_PROMPT_COOLDOWN_MS = 30000; // 30 seconds cooldown
 
   const isLoading = status === 'running';
 
@@ -297,7 +299,12 @@ const App: React.FC = () => {
       if (config.dpEnabled) {
         await runExperiment(false); // Run DP version
         setTimeout(() => {
-          setShowEthicsPrompt(true);
+          // Check cooldown before showing ethics prompt
+          const now = Date.now();
+          if (now - lastEthicsPromptTime >= ETHICS_PROMPT_COOLDOWN_MS) {
+            setShowEthicsPrompt(true);
+            setLastEthicsPromptTime(now);
+          }
         }, 3000);
       }
     } else {
@@ -930,21 +937,6 @@ const App: React.FC = () => {
         <div className="visualization-container">
           <div className="visualization-content">
             <h2>📈 Results Visualization</h2>
-            
-            <div className="viz-section">
-              <h3>Model Performance Comparison</h3>
-              <div className="viz-placeholder">
-                <div className="placeholder-icon">📊</div>
-                <p>Run experiments in the Playground tab to see performance comparisons across:</p>
-                <ul>
-                  <li>✅ Baseline Model Performance</li>
-                  <li>🔒 Differential Privacy Impact (by epsilon)</li>
-                  <li>🤝 Federated Learning Aggregation Methods</li>
-                  <li>📊 Privacy-Utility Tradeoff Analysis</li>
-                </ul>
-              </div>
-            </div>
-
             <div className="viz-section">
               <h3>📊 Privacy Levels</h3>
               <div className="privacy-levels">

@@ -95,10 +95,11 @@ class ModelLoader:
         
         # Standard DP/baseline models
         dataset = parts[0]  # 'diabetes' or 'adult'
+        model_arch = parts[1].lower()  # Convert to lowercase (FNN -> fnn, LR -> lr)
         
         # Check if it's a baseline or DP model
         if 'baseline' in name_without_ext:
-            model_type = f"{parts[1]}_baseline"  # e.g., 'fnn_baseline'
+            model_type = f"{model_arch}_baseline"  # e.g., 'fnn_baseline'
             epsilon = None
             aggregation = None
         elif 'dp_eps' in name_without_ext:
@@ -108,7 +109,7 @@ class ModelLoader:
                 if part.startswith('eps'):
                     epsilon = float(part.replace('eps', ''))
                     break
-            model_type = f"{parts[1]}_dp"  # e.g., 'fnn_dp' or 'lr_dp'
+            model_type = f"{model_arch}_dp"  # e.g., 'fnn_dp' or 'lr_dp'
             aggregation = None
         else:
             return None
@@ -155,25 +156,20 @@ class ModelLoader:
         if info is None:
             raise ValueError(f"Could not parse model filename: {filepath}")
         
-        # Create model architecture
-        model_type_full = info['model_type']
-        if info.get('epsilon') is not None:
-            model_type_full = f"{info['model_type']}_eps{info['epsilon']}"
-        
-        model = create_model(info['dataset'], model_type_full)
-        
-        # Load checkpoint
+        # Load checkpoint first to get architecture info
         checkpoint = torch.load(filepath, map_location=self.device, weights_only=False)
         
-        # Handle different checkpoint formats
+        # Extract model state dict and metadata based on checkpoint format
         if 'model_state_dict' in checkpoint:
-            # New format with preprocessing info
+            # New format with metadata
             state_dict = checkpoint['model_state_dict']
+            model_architecture = checkpoint.get('model_architecture', {})
+            training_config = checkpoint.get('training_config', {})
             metadata = {
                 'preprocessing': checkpoint.get('preprocessing', {}),
-                'model_architecture': checkpoint.get('model_architecture', {}),
+                'model_architecture': model_architecture,
                 'metadata': checkpoint.get('metadata', {}),
-                'training_config': checkpoint.get('training_config', {}),
+                'training_config': training_config,
                 'results': checkpoint.get('results', {}),
                 'aggregation': info.get('aggregation'),
                 'is_federated': info.get('is_federated', False)
@@ -181,6 +177,7 @@ class ModelLoader:
         else:
             # Simple format - just state dict
             state_dict = checkpoint
+            model_architecture = {}
             metadata = {
                 'aggregation': info.get('aggregation'),
                 'is_federated': info.get('is_federated', False)
@@ -194,6 +191,41 @@ class ModelLoader:
                 cleaned_state_dict[key.replace('_module.', '')] = value
             else:
                 cleaned_state_dict[key] = value
+        
+        # Create model with the correct architecture from checkpoint
+        # Use the saved architecture info to reconstruct the exact model
+        model_type_key = info['model_type']
+        dataset = info['dataset']
+        
+        # If we have architecture info from the checkpoint, use it to construct the model
+        # Otherwise, fall back to the legacy create_model function
+        if model_architecture and 'input_size' in model_architecture:
+            # Reconstruct model using saved architecture
+            from models.architectures import FeedforwardNN_Simple, LogisticRegressionModel
+            
+            input_size = model_architecture.get('input_size')
+            output_size = model_architecture.get('output_size', 2)
+            hidden_sizes = model_architecture.get('hidden_sizes')
+            dropout_rate = model_architecture.get('dropout_rate', 0.3)
+            
+            # Determine which class to use based on model type
+            if 'lr' in model_type_key.lower():
+                model = LogisticRegressionModel(input_size=input_size, output_size=output_size)
+            else:  # FNN variant
+                # Use FeedforwardNN_Simple for newly trained DP models
+                # (matches the notebook architecture)
+                model = FeedforwardNN_Simple(
+                    input_size=input_size,
+                    hidden_sizes=hidden_sizes,
+                    output_size=output_size,
+                    dropout_rate=dropout_rate
+                )
+        else:
+            # Fallback to legacy approach
+            model_type_full = info['model_type']
+            if info.get('epsilon') is not None:
+                model_type_full = f"{info['model_type']}_eps{info['epsilon']}"
+            model = create_model(dataset, model_type_full)
         
         model.load_state_dict(cleaned_state_dict)
         model.eval()
