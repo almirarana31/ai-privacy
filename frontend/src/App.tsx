@@ -376,7 +376,7 @@ const App: React.FC = () => {
       {showWelcomeModal && (
         <div className="modal-overlay">
           <div className="modal welcome-modal">
-            <h2>🔒 Welcome to Privacy Playground</h2>
+            <h2>Welcome to Privacy Playground</h2>
             <div className="modal-content">
               <p className="lead">
                 Explore the ethical dilemma at the heart of modern AI: <strong>privacy vs accuracy</strong>.
@@ -883,6 +883,17 @@ const App: React.FC = () => {
                     <p><strong>Data Type:</strong> All numerical features</p>
                     <p><strong>Train/Test Split:</strong> 80/20</p>
                   </div>
+
+                  <div className="info-card research-results">
+                    <h4>🔬 Research Results (5-Fold CV × 5 Runs)</h4>
+                    <p><strong>Logistic Regression:</strong></p>
+                    <p>Accuracy: 86.33% ± 0.08% (range: 86.08% - 86.46%)</p>
+                    <p>F1-Score: 82.91% ± 0.23%</p>
+                    <p><strong>Neural Network (FNN):</strong></p>
+                    <p>Accuracy: 86.58% ± 0.07% (range: 86.44% - 86.68%)</p>
+                    <p>F1-Score: 82.94% ± 0.53%</p>
+                    <p className="note">✅ 25 evaluations per model</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -926,6 +937,17 @@ const App: React.FC = () => {
                     <p><strong>Data Type:</strong> Mixed numerical and categorical</p>
                     <p><strong>Train/Test Split:</strong> 80/20</p>
                   </div>
+
+                  <div className="info-card research-results">
+                    <h4>🔬 Research Results (5-Fold CV × 5 Runs)</h4>
+                    <p><strong>Logistic Regression:</strong></p>
+                    <p>Accuracy: 82.44% ± 0.27% (range: 81.93% - 82.92%)</p>
+                    <p>F1-Score: 80.98% ± 0.31%</p>
+                    <p><strong>Neural Network (FNN):</strong></p>
+                    <p>Accuracy: 85.01% ± 0.32% (range: 84.24% - 85.67%)</p>
+                    <p>F1-Score: 84.22% ± 0.36%</p>
+                    <p className="note">✅ 25 evaluations per model</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -937,6 +959,23 @@ const App: React.FC = () => {
         <div className="visualization-container">
           <div className="visualization-content">
             <h2>📈 Results Visualization</h2>
+            
+            <div className="viz-section">
+              <h3>🔬 Research Results: Baseline Model Comparison</h3>
+              <div className="research-viz">
+                <img 
+                  src="/research_results_comparison.png" 
+                  alt="Baseline Model Comparison - Diabetes vs Adult Dataset"
+                  style={{ width: '100%', maxWidth: '1200px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                />
+                <div className="viz-caption">
+                  <p><strong>5-Fold Cross-Validation × 5 Independent Runs (25 evaluations per model)</strong></p>
+                  <p>Comparison of Logistic Regression (LR) and Feedforward Neural Network (FNN) on Diabetes and Adult datasets.</p>
+                  <p>Bar charts show mean accuracy with error bars (±1 std), box plots show distribution across all runs.</p>
+                </div>
+              </div>
+            </div>
+
             <div className="viz-section">
               <h3>📊 Privacy Levels</h3>
               <div className="privacy-levels">
