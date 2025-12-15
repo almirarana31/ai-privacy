@@ -74,24 +74,24 @@ class DataProcessor:
                         'features': X_test.shape[1]
                     }
                     
-                    print(f"✓ Loaded test data for {dataset}: {X_test.shape}")
+                    print(f"[OK] Loaded test data for {dataset}: {X_test.shape}")
                 else:
-                    print(f"⚠ Test data not found for {dataset}")
+                    print(f"[WARN] Test data not found for {dataset}")
                 
                 # Load scaler if available
                 if os.path.exists(scaler_path):
                     with open(scaler_path, 'rb') as f:
                         self.scalers[dataset] = pickle.load(f)
-                    print(f"✓ Loaded scaler for {dataset}")
+                    print(f"[OK] Loaded scaler for {dataset}")
                 
                 # Load feature names if available
                 if os.path.exists(features_path):
                     with open(features_path, 'rb') as f:
                         self.feature_names[dataset] = pickle.load(f)
-                    print(f"✓ Loaded feature names for {dataset}")
+                    print(f"[OK] Loaded feature names for {dataset}")
                     
             except Exception as e:
-                print(f"✗ Error loading {dataset} data: {e}")
+                print(f"[ERROR] Error loading {dataset} data: {e}")
         
         return loaded
     

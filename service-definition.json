@@ -1,0 +1,27 @@
+{
+  "cluster": "ai-privacy-cluster",
+  "serviceName": "ai-privacy-service",
+  "taskDefinition": "ai-privacy-task:1",
+  "desiredCount": 1,
+  "launchType": "FARGATE",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": [
+        "subnet-045f58c1545e49c02",
+        "subnet-087e780f51cd73f97"
+      ],
+      "securityGroups": [
+        "sg-01b26d6e604e138f0"
+      ],
+      "assignPublicIp": "ENABLED"
+    }
+  },
+  "deploymentConfiguration": {
+    "maximumPercent": 200,
+    "minimumHealthyPercent": 100,
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    }
+  }
+}

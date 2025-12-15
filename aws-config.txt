@@ -1,0 +1,19 @@
+# AWS Deployment Configuration
+# Created: 2025-12-15
+
+ACCOUNT_ID=442205875234
+REGION=ap-southeast-3
+
+# ECR Repository URIs
+BACKEND_REPO=442205875234.dkr.ecr.ap-southeast-3.amazonaws.com/ai-privacy-backend
+FRONTEND_REPO=442205875234.dkr.ecr.ap-southeast-3.amazonaws.com/ai-privacy-frontend
+
+# Will be filled in later steps:
+VPC_ID=vpc-0b97d283d50a0ab9d
+SUBNET1=subnet-045f58c1545e49c02
+SUBNET2=subnet-087e780f51cd73f97
+SG_ID=sg-01b26d6e604e138f0
+EFS_ID=fs-0243fd013ca8a44c5
+ALB_ARN=
+TG_FRONTEND=
+TG_BACKEND=

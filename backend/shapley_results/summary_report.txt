@@ -1,0 +1,52 @@
+================================================================================
+SHAPLEY ANALYSIS SUMMARY REPORT
+================================================================================
+
+
+DIABETES_FNN
+----------------------------------------
+Model: diabetes_fnn_baseline_20251210_134812.pth
+Top 5 Features:
+ feature  importance
+ GenHlth    0.044728
+     BMI    0.037399
+     Age    0.029870
+  HighBP    0.028190
+HighChol    0.020329
+
+
+DIABETES_LR
+----------------------------------------
+Model: diabetes_lr_baseline_20251210_135919.pth
+Top 5 Features:
+ feature  importance
+ GenHlth    0.049433
+  HighBP    0.041416
+     BMI    0.039870
+     Age    0.029358
+HighChol    0.027616
+
+
+ADULT_FNN
+----------------------------------------
+Model: adult_fnn_baseline_20251210_140146.pth
+Top 5 Features:
+       feature  importance
+marital-status    0.080481
+  capital-gain    0.062669
+ education-num    0.062309
+           age    0.045063
+hours-per-week    0.026841
+
+
+ADULT_LR
+----------------------------------------
+Model: adult_lr_baseline_20251210_140308.pth
+Top 5 Features:
+       feature  importance
+ education-num    0.090197
+  capital-gain    0.052323
+           sex    0.047553
+           age    0.047246
+marital-status    0.040709
+
