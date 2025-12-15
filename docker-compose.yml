@@ -1,0 +1,58 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: privacy-playground-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount models and results directories
+      - ./backend/models_research:/app/models_research
+      - ./backend/models_research_fl_dp:/app/models_research_fl_dp
+      - ./backend/models_research_dp:/app/models_research_dp
+      - ./backend/models_research_dp_continue:/app/models_research_dp_continue
+      - ./backend/models_fl_adult:/app/models_fl_adult
+      - ./backend/models_fl_continue:/app/models_fl_continue
+      - ./backend/data:/app/data
+      - ./backend/datasets:/app/datasets
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - privacy-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: privacy-playground-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - privacy-network
+
+networks:
+  privacy-network:
+    driver: bridge
+
+volumes:
+  models_research:
+  models_research_fl_dp:
