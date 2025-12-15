@@ -395,18 +395,4 @@ PersistentVolumeClaims
 
 This project is for academic research purposes.
 
-## 👥 Contributors
-
-Research project by Almir
-
-## 🤝 Contributing
-
-This is a research project. For collaboration inquiries, please open an issue.
-
-## 📧 Contact
-
-For questions about the research methodology or implementation, please open a GitHub issue.
-
----
-
 **Status:** Active Development | **Last Updated:** December 2025
