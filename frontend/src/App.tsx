@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import './App.css';
+import DashboardPage from './pages/DashboardPage';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -47,7 +48,7 @@ type EthicsResponse = {
 };
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'playground' | 'survey' | 'dataset' | 'visualization'>('playground');
+  const [activeTab, setActiveTab] = useState<'playground' | 'survey' | 'dataset' | 'visualization' | 'dashboard'>('dashboard');
   const [trainingMode, setTrainingMode] = useState<'dp' | 'fl'>('dp');
   const [aggregator, setAggregator] = useState<'fedavg' | 'fedprox' | 'qffl' | 'scaffold' | 'fedadam'>('fedavg');
   const [config, setConfig] = useState<Config>({
@@ -461,22 +462,28 @@ const App: React.FC = () => {
         <h1>🔒 Differential Privacy Playground</h1>
         <nav className="tabs">
           <button 
+            className={`tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            📊 Interactive Dashboard
+          </button>
+          <button 
             className={`tab ${activeTab === 'playground' ? 'active' : ''}`}
             onClick={() => setActiveTab('playground')}
           >
-            🎮 Interactive Playground
+            🎮 Playground
           </button>
           <button 
             className={`tab ${activeTab === 'dataset' ? 'active' : ''}`}
             onClick={() => setActiveTab('dataset')}
           >
-            📊 Dataset Explorer
+            📁 Dataset Explorer
           </button>
           <button 
             className={`tab ${activeTab === 'visualization' ? 'active' : ''}`}
             onClick={() => setActiveTab('visualization')}
           >
-            📈 Visualizations
+            📈 Visualization
           </button>
           <button 
             className={`tab ${activeTab === 'survey' ? 'active' : ''}`}
@@ -486,6 +493,8 @@ const App: React.FC = () => {
           </button>
         </nav>
       </header>
+
+      {activeTab === 'dashboard' && <DashboardPage />}
 
       {activeTab === 'playground' && (
       <div className="playground-container">
