@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import './App.css';
 // import DashboardPage from './pages/DashboardPage';
 
-const API_BASE_URL = 'http://43.218.226.78:8000:';
+// Use Docker service name for backend when running in Docker, or localhost for local dev
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
 
 type Config = {
   sampleDataset: string;

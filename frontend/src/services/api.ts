@@ -1,6 +1,7 @@
 import type { ModelParameters, TrainingData, ModelPerformance } from '../types.ts';
 
-const API_BASE_URL = 'http://108.136.50.96:8000/api'; // Replace with your actual backend URL
+// Use Docker service name for backend when running in Docker, or localhost for local dev
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
 
 export const runModel = async (
   parameters: ModelParameters,
