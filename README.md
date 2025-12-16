@@ -1,4 +1,10 @@
 # AI Privacy - Privacy-Preserving Machine Learning Platform
+![Status](https://img.shields.io/badge/status-active-success)
+![Research](https://img.shields.io/badge/type-academic%20research-blue)
+![Python](https://img.shields.io/badge/python-3.11+-blue)
+![Docker](https://img.shields.io/badge/docker-ready-2496ED)
+![License](https://img.shields.io/badge/license-academic-lightgrey)
+![Privacy](https://img.shields.io/badge/focus-privacy%20%26%20ethics-purple)
 
 A comprehensive research platform for evaluating privacy-preserving machine learning techniques including **Differential Privacy** and **Federated Learning** across multiple datasets and models.
 
@@ -98,27 +104,6 @@ ai-privacy/
   3. **q-FedAvg** - Fairness-weighted aggregation (q=0.2)
   4. **SCAFFOLD** - Variance reduction
   5. **FedAdam** - Adaptive optimization (β₁=0.9, β₂=0.999)
-
-- **Federation setup:**
-  - 5 clients (IID data distribution)
-  - 20 global rounds
-  - 5 local epochs per round
-  - Batch size: 64, learning rate: 0.001
-
-- **Total configurations:** 2 datasets × 2 models × 5 aggregations = **20 configs**
-
-### **Cross-Validation**
-
-**Rigorous 5×5 evaluation design:**
-- **5 random seeds:** [42, 123, 456, 789, 1011]
-- **5-fold stratified cross-validation** (maintains class balance)
-- **25 evaluations per configuration**
-
-**Total experimental evaluations:**
-- Baseline: 4 configs × 25 = 100 evaluations
-- Differential Privacy: 20 configs × 25 = 500 evaluations
-- Federated Learning: 20 configs × 25 = 500 evaluations
-- **Grand total: 1,100 evaluations**
 
 ## 🏗️ Architecture
 
@@ -235,9 +220,9 @@ docker-compose down
 ```
 
 Access the application:
-- **Frontend:** http://43.218.226.78:3000
-- **Backend API:** http://108.136.50.96:8000
-- **API Docs:** http://108.136.50.96:8000/docs
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:8000
+- **API Docs:** http://localhost:8000/docs
 
 ## 📓 Running Experiments
 
@@ -260,131 +245,12 @@ Access the application:
 3. Run all cells
 4. Results save to `backend/models_*/`
 
-### **Available Notebooks**
+## WebApp Design
+<img width="1863" height="907" alt="Screenshot 2025-12-16 231839" src="https://github.com/user-attachments/assets/9dbbb969-d628-4de9-8d35-cc97930172ee" />
+<img width="1848" height="914" alt="Screenshot 2025-12-16 231818" src="https://github.com/user-attachments/assets/e2e3d333-3bdf-4de3-a3e5-f566b2b190e5" />
+<img width="1844" height="917" alt="Screenshot 2025-12-16 231825" src="https://github.com/user-attachments/assets/2f35a514-98e2-4f5d-b9c6-3493cea97168" />
+<img width="1845" height="913" alt="Screenshot 2025-12-16 231832" src="https://github.com/user-attachments/assets/cfb3e38e-46a2-4bde-a3a7-abd2d7bea761" />
 
-| Notebook | Purpose | Configs | Evaluations |
-|----------|---------|---------|-------------|
-| `dp_continue_crossvalidation.ipynb` | DP Diabetes (LR, FNN) | 10 | 250 |
-| `dp_adult_complete.ipynb` | DP Adult (LR, FNN) | 10 | 250 |
-| `fl_diabetes_fnn_continue.ipynb` | FL Diabetes FNN completion | 3 | 75 |
-| `comprehensive_analysis.ipynb` | Statistical analysis + viz | - | - |
-| `merge_all_results.ipynb` | Aggregate all results | - | - |
-
-## 📊 Metrics & Analysis
-
-### **Performance Metrics**
-- **Accuracy** - Primary metric (mean ± std, min-max range)
-- **F1-Score** - Weighted average (handles class imbalance)
-- **Actual ε** - Measured privacy consumption (DP only)
-
-### **Statistical Tests**
-- Independent t-tests comparing each method vs baseline
-- p-values for significance (α=0.05)
-- Accuracy loss quantification
-- Privacy-utility tradeoff visualization
-
-### **Visualizations**
-- Privacy-accuracy tradeoff curves (DP)
-- Aggregation method comparison (FL)
-- Accuracy loss heatmaps
-- Overall method comparison
-
-## 📈 Current Progress
-
-### ✅ Completed
-- Baseline: All 4 configurations (diabetes + adult, LR + FNN)
-- FL Adult: All 10 configurations (2 models × 5 aggregations)
-- FL Diabetes: 7/10 configurations (missing FNN: q-FedAvg, SCAFFOLD, FedAdam)
-- DP Diabetes: 3/10 configurations (LR: ε=5.0, 10.0 | FNN: ε=0.5)
-- Docker containerization setup
-- Analysis notebooks
-
-### ⚠️ In Progress
-- DP Diabetes: 7 missing configs
-- DP Adult: All 10 configs (notebook created)
-- FL Diabetes FNN: 3 missing aggregations
-
-### 📝 Total
-- **Completed:** ~570/1,100 evaluations (~52%)
-- **Remaining:** ~530 evaluations
-
-## 🔐 Privacy Guarantees
-
-### **Differential Privacy (DP)**
-- **Formal guarantee:** (ε, δ)-differential privacy
-- Lower ε = stronger privacy, higher accuracy loss
-- Opacus library provides certified privacy accounting
-- **Note:** Current notebooks use warnings suppression for clean output. For production deployment, enable `secure_mode=True`
-
-### **Federated Learning (FL)**
-- **Privacy benefit:** Raw data never leaves clients
-- **Limitation:** No formal privacy guarantee (vulnerable to inference attacks)
-- **Enhancement:** Can combine with DP for formal guarantees (future work)
-
-## 🛠️ Technology Stack
-
-### **Backend**
-- Python 3.11
-- FastAPI (async web framework)
-- PyTorch (deep learning)
-- Opacus (differential privacy)
-- scikit-learn (preprocessing & metrics)
-- pandas, numpy (data manipulation)
-
-### **Frontend**
-- React 18
-- Vite (build tool)
-- Tailwind CSS (styling)
-- Recharts (data visualization)
-- Axios (HTTP client)
-
-### **Infrastructure**
-- Docker & Docker Compose
-- Nginx (reverse proxy)
-- Uvicorn (ASGI server)
-
-### **Development**
-- VS Code (IDE)
-- Jupyter/IPython (notebooks)
-- Kaggle (GPU training)
-
-## 🚢 Kubernetes Deployment (Planned)
-
-### **Architecture**
-```
-Internet → Ingress (HTTPS/TLS)
-            ↓
-    LoadBalancer Service
-            ↓
-    ┌──────┴──────┐
-    ↓             ↓
-Frontend Pods  Backend Pods
-(replicas)     (replicas)
-    ↓             ↓
-PersistentVolumeClaims
-(results storage)
-```
-
-### **Components**
-- Deployments (frontend, backend with replicas)
-- Services (ClusterIP, LoadBalancer)
-- Ingress (domain routing + TLS)
-- PersistentVolume/PVC (shared storage)
-- ConfigMaps (configuration)
-- HorizontalPodAutoscaler (auto-scaling)
-
-### **Cloud Platforms**
-- Azure Kubernetes Service (AKS)
-- Amazon Elastic Kubernetes Service (EKS)
-- Google Kubernetes Engine (GKE)
-
-## 📚 References
-
-### **Papers**
-- Abadi et al. (2016) - Deep Learning with Differential Privacy
-- McMahan et al. (2017) - Communication-Efficient Learning of Deep Networks from Decentralized Data
-- Li et al. (2020) - Federated Optimization in Heterogeneous Networks (FedProx)
-- Reddi et al. (2021) - Adaptive Federated Optimization (FedAdam)
 
 ### **Libraries**
 - [Opacus](https://opacus.ai/) - PyTorch Differential Privacy
