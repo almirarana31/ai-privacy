@@ -22,7 +22,7 @@ Start-Sleep -Seconds 30
 
 Write-Host "`n4. Checking backend health..." -ForegroundColor Yellow
 try {
-    $backendResponse = Invoke-WebRequest -Uri "http://localhost:8000/health" -UseBasicParsing
+    $backendResponse = Invoke-WebRequest -Uri "http://43.218.226.78:8000/health" -UseBasicParsing
     if ($backendResponse.StatusCode -eq 200) {
         Write-Host "✅ Backend is healthy" -ForegroundColor Green
     }
@@ -34,7 +34,7 @@ try {
 
 Write-Host "`n5. Checking frontend health..." -ForegroundColor Yellow
 try {
-    $frontendResponse = Invoke-WebRequest -Uri "http://localhost/health" -UseBasicParsing
+    $frontendResponse = Invoke-WebRequest -Uri "http://43.218.226.78/health" -UseBasicParsing
     if ($frontendResponse.StatusCode -eq 200) {
         Write-Host "✅ Frontend is healthy" -ForegroundColor Green
     }
@@ -46,7 +46,7 @@ try {
 
 Write-Host "`n6. Testing API endpoint..." -ForegroundColor Yellow
 try {
-    $apiResponse = Invoke-WebRequest -Uri "http://localhost/api/health" -UseBasicParsing
+    $apiResponse = Invoke-WebRequest -Uri "http://43.218.226.78/api/health" -UseBasicParsing
     if ($apiResponse.StatusCode -eq 200) {
         Write-Host "✅ API proxy working" -ForegroundColor Green
     }
@@ -59,8 +59,8 @@ Write-Host "`n================================" -ForegroundColor Cyan
 Write-Host "All tests passed! ✅" -ForegroundColor Green
 Write-Host "================================" -ForegroundColor Cyan
 Write-Host "`nServices running:" -ForegroundColor Yellow
-Write-Host "  Frontend: http://localhost" -ForegroundColor White
-Write-Host "  Backend:  http://localhost:8000" -ForegroundColor White
-Write-Host "  API Docs: http://localhost:8000/docs" -ForegroundColor White
+Write-Host "  Frontend: http://43.218.226.78" -ForegroundColor White
+Write-Host "  Backend:  http://108.136.50.96:8000" -ForegroundColor White
+Write-Host "  API Docs: http://108.136.50.96:8000/docs" -ForegroundColor White
 Write-Host "`nTo view logs: docker-compose logs -f" -ForegroundColor Cyan
 Write-Host "To stop:      docker-compose down" -ForegroundColor Cyan

@@ -1,43 +1,16 @@
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-.venv/
-venv/
-ENV/
-env/
+*.pyc
+*.pyo
+*.pyd
 
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
+.env
+.env.*
 
-# Data and models (too large for Docker context)
-datasets/
-models/
-models_*/
-*.pth
-*.pkl
-*.csv
-*.json
-data/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Git
-.git/
+.git
 .gitignore
 
-# Documentation
-*.md
-DOCUMENTATION_INDEX.md
-COMPLETION_CHECKLIST.md
+.vscode
+.idea
+
+# Optional: ignore large training artifacts if not needed at runtime
+# *.pth

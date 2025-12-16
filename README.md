@@ -235,9 +235,9 @@ docker-compose down
 ```
 
 Access the application:
-- **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:8000
-- **API Docs:** http://localhost:8000/docs
+- **Frontend:** http://43.218.226.78:3000
+- **Backend API:** http://108.136.50.96:8000
+- **API Docs:** http://108.136.50.96:8000/docs
 
 ## 📓 Running Experiments
 

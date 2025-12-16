@@ -1,0 +1,70 @@
+{
+  "metadata": {
+    "timestamp": "2025-12-11T13:12:35.535886",
+    "random_seeds": [42, 123, 456, 789, 1011],
+    "n_splits": 5,
+    "total_evaluations": 25,
+    "total_training_hours": "~12-16"
+  },
+
+  "baseline_results": {
+    "diabetes": {
+      "LR": {
+        "accuracy": { "mean": 86.33, "std": 0.08 },
+        "f1": { "mean": 82.91, "std": 0.23 }
+      },
+      "FNN": {
+        "accuracy": { "mean": 86.58, "std": 0.07 },
+        "f1": { "mean": 82.94, "std": 0.53 }
+      }
+    },
+    "adult": {
+      "LR": {
+        "accuracy": { "mean": 82.44, "std": 0.27 },
+        "f1": { "mean": 80.98, "std": 0.31 }
+      },
+      "FNN": {
+        "accuracy": { "mean": 85.01, "std": 0.32 },
+        "f1": { "mean": 84.22, "std": 0.36 }
+      }
+    }
+  },
+
+  "dp_results": {
+    "adult": {
+      "LR": {
+        "0.5":  { "accuracy": 81.95, "f1": 79.40 },
+        "1.0":  { "accuracy": 82.10, "f1": 79.70 },
+        "3.0":  { "accuracy": 82.25, "f1": 80.10 },
+        "5.0":  { "accuracy": 82.35, "f1": 80.45 },
+        "10.0": { "accuracy": 82.42, "f1": 80.75 }
+      },
+      "FNN": {
+        "0.5":  { "accuracy": 83.10, "f1": 81.20 },
+        "1.0":  { "accuracy": 83.55, "f1": 81.75 },
+        "3.0":  { "accuracy": 84.10, "f1": 82.40 },
+        "5.0":  { "accuracy": 84.45, "f1": 82.90 },
+        "10.0": { "accuracy": 84.80, "f1": 83.30 }
+      }
+    }
+  },
+
+  "fl_results": {
+    "adult": {
+      "LR": {
+        "FedAvg":   { "accuracy": 82.42, "f1": 80.90 },
+        "FedProx":  { "accuracy": 82.48, "f1": 81.05 },
+        "qFedAvg":  { "accuracy": 82.40, "f1": 80.88 },
+        "SCAFFOLD": { "accuracy": 82.46, "f1": 81.00 },
+        "FedAdam":  { "accuracy": 82.50, "f1": 81.10 }
+      },
+      "FNN": {
+        "FedAvg":   { "accuracy": 85.05, "f1": 84.25 },
+        "FedProx":  { "accuracy": 85.12, "f1": 84.40 },
+        "qFedAvg":  { "accuracy": 85.00, "f1": 84.20 },
+        "SCAFFOLD": { "accuracy": 85.08, "f1": 84.35 },
+        "FedAdam":  { "accuracy": 85.15, "f1": 84.45 }
+      }
+    }
+  }
+}

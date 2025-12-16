@@ -40,7 +40,7 @@
         }
       },
       "healthCheck": {
-        "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+        "command": ["CMD-SHELL", "curl -f http://43.218.226.78:8000/health || exit 1"],
         "interval": 30,
         "timeout": 5,
         "retries": 3,
@@ -62,7 +62,7 @@
       "environment": [
         {
           "name": "VITE_API_URL",
-          "value": "http://localhost:8000"
+          "value": "/api"
         }
       ],
       "logConfiguration": {

@@ -1,6 +1,6 @@
 import type { ModelParameters, TrainingData, ModelPerformance } from '../types.ts';
 
-const API_BASE_URL = 'http://localhost:8000/api'; // Replace with your actual backend URL
+const API_BASE_URL = 'http://108.136.50.96:8000/api'; // Replace with your actual backend URL
 
 export const runModel = async (
   parameters: ModelParameters,

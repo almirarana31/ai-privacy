@@ -1,13 +1,3 @@
-"""
-Privacy Playground Backend - FastAPI Application
-
-Provides REST API endpoints for:
-- Running experiments on pre-trained models
-- Evaluating models on local test data or uploaded CSV
-- Listing available models and configurations
-- Hot-reloading models
-"""
-
 import os
 import sys
 import json
@@ -18,6 +8,8 @@ import numpy as np
 import torch
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
@@ -104,6 +96,7 @@ class HealthResponse(BaseModel):
 # Application Lifecycle
 # ============================================================================
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown events."""
@@ -180,11 +173,15 @@ app.add_middleware(
         "http://localhost:3000",  # Alternative dev server
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        "http://43.218.226.78:8000",
+        "http://108.136.50.96:8000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 
 
 # ============================================================================
@@ -246,6 +243,9 @@ def get_model_type_key(model_type: str, dp_enabled: bool) -> str:
 # ============================================================================
 # API Endpoints
 # ============================================================================
+@app.get("/")
+def serve_frontend():
+    return FileResponse("static/index.html")
 
 @app.get(
     "/", 
@@ -917,7 +917,8 @@ async def get_baseline_visualization_data():
     results = []
     
     try:
-        baseline_file = "models_research/research_results.json"
+        # Corrected path for research_results.json
+        baseline_file = os.path.join("models", "models_research", "research_results.json")
         with open(baseline_file, 'r') as f:
             data = json.load(f)
             

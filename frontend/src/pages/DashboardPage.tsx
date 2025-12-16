@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import InteractiveDashboard from '../components/InteractiveDashboard';
 import visualizationService, { type VisualizationData } from '../services/visualizationService';
 
 const DashboardPage: React.FC = () => {
@@ -112,11 +111,7 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div>
-      <InteractiveDashboard
-        dpData={data.dp}
-        flData={data.fl}
-        baselineData={data.baseline[0]}
-      />
+      // DashboardPage removed
     </div>
   );
 };

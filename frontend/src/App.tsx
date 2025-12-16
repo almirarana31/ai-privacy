@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import './App.css';
-import DashboardPage from './pages/DashboardPage';
+// import DashboardPage from './pages/DashboardPage';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://43.218.226.78:8000:';
 
 type Config = {
   sampleDataset: string;
@@ -48,7 +48,7 @@ type EthicsResponse = {
 };
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'playground' | 'survey' | 'dataset' | 'visualization' | 'dashboard'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'playground' | 'survey' | 'dataset' | 'visualization'>('playground');
   const [trainingMode, setTrainingMode] = useState<'dp' | 'fl'>('dp');
   const [aggregator, setAggregator] = useState<'fedavg' | 'fedprox' | 'qffl' | 'scaffold' | 'fedadam'>('fedavg');
   const [config, setConfig] = useState<Config>({
@@ -461,12 +461,7 @@ const App: React.FC = () => {
       <header className="header">
         <h1>🔒 Differential Privacy Playground</h1>
         <nav className="tabs">
-          <button 
-            className={`tab ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            📊 Interactive Dashboard
-          </button>
+          {/* Interactive Dashboard tab removed */}
           <button 
             className={`tab ${activeTab === 'playground' ? 'active' : ''}`}
             onClick={() => setActiveTab('playground')}
@@ -494,7 +489,7 @@ const App: React.FC = () => {
         </nav>
       </header>
 
-      {activeTab === 'dashboard' && <DashboardPage />}
+      {/* DashboardPage removed */}
 
       {activeTab === 'playground' && (
       <div className="playground-container">
@@ -969,21 +964,7 @@ const App: React.FC = () => {
           <div className="visualization-content">
             <h2>📈 Results Visualization</h2>
             
-            <div className="viz-section">
-              <h3>🔬 Research Results: Baseline Model Comparison</h3>
-              <div className="research-viz">
-                <img 
-                  src="/research_results_comparison.png" 
-                  alt="Baseline Model Comparison - Diabetes vs Adult Dataset"
-                  style={{ width: '100%', maxWidth: '1200px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                />
-                <div className="viz-caption">
-                  <p><strong>5-Fold Cross-Validation × 5 Independent Runs (25 evaluations per model)</strong></p>
-                  <p>Comparison of Logistic Regression (LR) and Feedforward Neural Network (FNN) on Diabetes and Adult datasets.</p>
-                  <p>Bar charts show mean accuracy with error bars (±1 std), box plots show distribution across all runs.</p>
-                </div>
-              </div>
-            </div>
+            {/* Research Results: Baseline Model Comparison image removed as requested */}
 
             <div className="viz-section">
               <h3>📊 Privacy Levels</h3>
