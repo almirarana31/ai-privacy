@@ -1,25 +1,20 @@
 version: 0.0
-Resources:
-  - TargetService:
-      Type: AWS::ECS::Service
-      Properties:
-        TaskDefinition: <TASK_DEFINITION>
-        LoadBalancerInfo:
-          ContainerName: "frontend"
-          ContainerPort: 80
-        PlatformVersion: "LATEST"
-        NetworkConfiguration:
-          AwsvpcConfiguration:
-            Subnets:
-              - "subnet-xxxxxxxx"  # Replace with your subnet
-              - "subnet-yyyyyyyy"  # Replace with your subnet
-            SecurityGroups:
-              - "sg-xxxxxxxxx"     # Replace with your security group
-            AssignPublicIp: "ENABLED"
+os: linux
 
-Hooks:
-  - BeforeInstall: "LambdaFunctionToValidateBeforeInstall"
-  - AfterInstall: "LambdaFunctionToValidateAfterTraffic"
-  - AfterAllowTestTraffic: "LambdaFunctionToValidateAfterTestTrafficStarts"
-  - BeforeAllowTraffic: "LambdaFunctionToValidateBeforeAllowingProductionTraffic"
-  - AfterAllowTraffic: "LambdaFunctionToValidateAfterAllowingProductionTraffic"
+files:
+  - source: /
+    destination: /var/www/myapp
+    overwrite: yes
+
+hooks:
+  BeforeInstall:
+    - location: scripts/stop.sh
+      runas: root
+
+  AfterInstall:
+    - location: scripts/install.sh
+      runas: root
+
+  ApplicationStart:
+    - location: scripts/start.sh
+      runas: root

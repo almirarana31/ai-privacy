@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Line-by-Line Explanation</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #ffffff;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 30px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .section {
+            margin: 20px 0;
+            border: 2px solid #dddddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #f5f5f5;
+            padding: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header:hover {
+            background: #e8e8e8;
+        }
+
+        .section-content {
+            padding: 20px;
+            display: none;
+        }
+
+        .section.open .section-content {
+            display: block;
+        }
+
+        .code {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: "Courier New", monospace;
+            margin: 10px 0;
+            white-space: pre;
+        }
+
+        .explain {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #2196f3;
+            border-radius: 4px;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+        }
+
+        h3 {
+            color: #667eea;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>Complete Line-by-Line Explanation</h1>
+        <p>Baby_Organ.py – Code Walkthrough and Cellular Potts Theory</p>
+    </div>
+
+    <div class="content">
+
+        <!-- Imports -->
+        <div class="section open">
+            <div class="section-header" onclick="this.parentElement.classList.toggle('open')">
+                <span>Lines 1–18: Imports and Setup</span>
+                <span>▼</span>
+            </div>
+            <div class="section-content">
+
+                <div class="code">
+import pygame
+import numpy as np
+import sys
+import psutil
+import time
+from enum import IntEnum
+from scipy.ndimage import gaussian_filter
+                </div>
+
+                <div class="explain">
+                    <strong>Purpose</strong>
+                    <p>
+                        These imports provide rendering (pygame), numerical computation
+                        (NumPy), system monitoring, and diffusion modeling.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Cell types -->
+        <div class="section">
+            <div class="section-header" onclick="this.parentElement.classList.toggle('open')">
+                <span>Lines 20–82: Cell Types</span>
+                <span>▼</span>
+            </div>
+            <div class="section-content">
+
+                <div class="code">
+class CellType(IntEnum):
+    EMPTY = 0
+    EMBRYO = 1
+    HEAD = 2
+    BRAIN = 3
+    BODY = 4
+    ARM_LEFT = 5
+    ARM_RIGHT = 6
+    LEG_LEFT = 7
+    LEG_RIGHT = 8
+    PLACENTA = 9
+    UMBILICAL = 10
+
+    HEART = 20
+    LIVER = 21
+    STOMACH = 22
+                </div>
+
+                <div class="explain">
+                    <p>
+                        <code>IntEnum</code> allows readable symbolic names while remaining
+                        compatible with NumPy arrays.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Grid initialization -->
+        <div class="section">
+            <div class="section-header" onclick="this.parentElement.classList.toggle('open')">
+                <span>Lines 146–178: Grid Initialization</span>
+                <span>▼</span>
+            </div>
+            <div class="section-content">
+
+                <div class="code">
+grid = np.zeros((300, 300), dtype=int)
+center = 150
+
+for i in range(-4, 5):
+    for j in range(-4, 5):
+        if i * i + j * j &lt;= 16:
+            grid[center + i, center + j] = CellType.EMBRYO
+                </div>
+
+                <div class="explain">
+                    <p>
+                        A small circular embryo seed is placed at the center of the grid
+                        using the equation x² + y² ≤ r².
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Placenta -->
+        <div class="section">
+            <div class="section-header" onclick="this.parentElement.classList.toggle('open')">
+                <span>Placenta Ring</span>
+                <span>▼</span>
+            </div>
+            <div class="section-content">
+
+                <div class="code">
+for i in range(300):
+    for j in range(300):
+        dist = np.hypot(i - center, j - center)
+        if 96 &lt; dist &lt; 126:
+            if RNG.random() &lt; 0.35:
+                grid[i, j] = CellType.PLACENTA
+                </div>
+
+                <div class="explain">
+                    <p>
+                        A sparse annular region models placenta attachment around the embryo.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Morphogens -->
+        <div class="section">
+            <div class="section-header" onclick="this.parentElement.classList.toggle('open')">
+                <span>Lines 180–197: Morphogen Diffusion</span>
+                <span>▼</span>
+            </div>
+            <div class="section-content">
+
+                <div class="code">
+self.morphogen_head *= 0.94
+self.morphogen_body *= 0.94
+
+head_strength = 1.4 if 3 &lt;= week &lt;= 8 else 1.0
+
+self.morphogen_head = gaussian_filter(
+    self.morphogen_head,
+    self.params["morphogen_diffusion"]
+)
+                </div>
+
+                <div class="highlight">
+                    <p>
+                        Gaussian filtering approximates the diffusion equation
+                        ∂c/∂t = D∇²c.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Monte Carlo -->
+        <div class="section">
+            <div class="section-header" onclick="this.parentElement.classList.toggle('open')">
+                <span>Monte Carlo Acceptance Rule</span>
+                <span>▼</span>
+            </div>
+            <div class="section-content">
+
+                <div class="code">
+if dE &lt; 0:
+    accept()
+else:
+    if RNG.random() &lt; math.exp(-dE / T):
+        accept()
+                </div>
+
+                <div class="explain">
+                    <p>
+                        This is the Metropolis criterion used in the Cellular Potts Model.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="
+            text-align: center;
+            padding: 30px;
+            background: #f0f0f0;
+            margin-top: 30px;
+            border-radius: 10px;
+        ">
+            <h2 style="color:#667eea;">Presentation-Ready</h2>
+            <p>
+                All code blocks and explanations now render correctly without HTML parsing
+                errors.
+            </p>
+        </div>
+
+    </div>
+</div>
+</body>
+</html>
