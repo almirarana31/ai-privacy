@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi import Response, Request
 from pydantic import BaseModel
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
@@ -233,9 +234,21 @@ def get_model_type_key(model_type: str, dp_enabled: bool) -> str:
         raise ValueError(f"Unknown model type: {model_type}")
 
 
+
 # ============================================================================
 # API Endpoints
 # ============================================================================
+@app.options("/{full_path:path}")
+async def preflight_handler(request: Request, full_path: str):
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
+
 @app.get("/")
 def serve_frontend():
     return FileResponse("static/index.html")
