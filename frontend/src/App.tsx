@@ -3,7 +3,7 @@ import './App.css';
 // import DashboardPage from './pages/DashboardPage';
 
 // Use Docker service name for backend when running in Docker, or localhost for local dev
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://y6mhhtvkvp.ap-southeast-1.awsapprunner.com/api';
 
 
 type Config = {
