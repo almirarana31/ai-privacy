@@ -144,15 +144,15 @@ GET /health               # Health check
 
 ### **Request Flow**
 ```
-User → localhost:3000 → Nginx
-                         ↓
-                    /api/* requests
-                         ↓
-              backend:8000 (Docker network)
-                         ↓
-              FastAPI reads JSON from volumes
-                         ↓
-              Response → Nginx → User
+User → https://ai-privacy-frontend.vercel.app → Nginx
+          ↓
+        /api/* requests
+          ↓
+        https://y6mhhtvkvp.ap-southeast-1.awsapprunner.com (Docker network)
+          ↓
+        FastAPI reads JSON from volumes
+          ↓
+        Response → Nginx → User
 ```
 
 ## 🚀 Getting Started
@@ -220,9 +220,9 @@ docker-compose down
 ```
 
 Access the application:
-- **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:8000
-- **API Docs:** http://localhost:8000/docs
+- **Frontend:** https://ai-privacy-frontend.vercel.app
+- **Backend API:** https://y6mhhtvkvp.ap-southeast-1.awsapprunner.com
+- **API Docs:** https://y6mhhtvkvp.ap-southeast-1.awsapprunner.com/docs
 
 ## 📓 Running Experiments
 
