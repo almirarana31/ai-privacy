@@ -3,7 +3,8 @@ import './App.css';
 // import DashboardPage from './pages/DashboardPage';
 
 // Use Docker service name for backend when running in Docker, or localhost for local dev
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+
 
 type Config = {
   sampleDataset: string;
