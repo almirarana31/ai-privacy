@@ -3,8 +3,7 @@ import './App.css';
 // import DashboardPage from './pages/DashboardPage';
 
 // Use Docker service name for backend when running in Docker, or localhost for local dev
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://y6mhhtvkvp.ap-southeast-1.awsapprunner.com/api';
-
+const _URL = ""
 
 type Config = {
   sampleDataset: string;
@@ -167,7 +166,7 @@ const App: React.FC = () => {
         epsilon: dpEnabledForRun ? config.epsilon : null,
       });
 
-      const response = await fetch(`${API_BASE_URL}/api/experiment`, {
+      const response = await fetch(`/api/experiment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -247,7 +246,7 @@ const App: React.FC = () => {
 
       const backendAggregator = aggregatorMap[aggregator] || 'FedAvg';
 
-      const response = await fetch(`${API_BASE_URL}/api/fl/experiment`, {
+      const response = await fetch(`/api/fl/experiment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

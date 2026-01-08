@@ -1,7 +1,7 @@
 import type { ModelParameters, TrainingData, ModelPerformance } from '../types.ts';
 
 // Use Docker service name for backend when running in Docker, or localhost for local dev
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://y6mhhtvkvp.ap-southeast-1.awsapprunner.com/api';
+const API_BASE_URL = ""
 
 
 export const runModel = async (
