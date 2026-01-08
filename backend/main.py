@@ -174,7 +174,8 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
         "http://43.218.226.78:8000",
-        "http://108.136.50.96:8000"
+        "http://108.136.50.96:8000",
+        "https://ai-privacy-frontend.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
