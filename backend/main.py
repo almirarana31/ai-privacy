@@ -168,12 +168,10 @@ app = FastAPI(
 # CORS middleware for frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://ai-privacy-frontend.vercel.app"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True
 )
 
 app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
