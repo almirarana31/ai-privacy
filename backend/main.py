@@ -169,12 +169,6 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # Alternative dev server
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "http://43.218.226.78:8000",
-        "http://108.136.50.96:8000",
         "https://ai-privacy-frontend.vercel.app"
     ],
     allow_credentials=True,
